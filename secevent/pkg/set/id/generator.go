@@ -1,3 +1,5 @@
+// pkg/set/id/generator.go
+
 package id
 
 import (
@@ -19,12 +21,10 @@ type Generator interface {
 // UUIDGenerator generates UUIDs for SET IDs
 type UUIDGenerator struct{}
 
-// NewUUIDGenerator creates a new UUID-based generator
 func NewUUIDGenerator() *UUIDGenerator {
 	return &UUIDGenerator{}
 }
 
-// Generate creates a new UUID string
 func (g *UUIDGenerator) Generate() string {
 	return uuid.New().String()
 }
@@ -36,7 +36,6 @@ type SequentialGenerator struct {
 	padLength int
 }
 
-// NewSequentialGenerator creates a new sequential generator
 func NewSequentialGenerator(prefix string, padLength int) *SequentialGenerator {
 	return &SequentialGenerator{
 		prefix:    prefix,
@@ -45,7 +44,6 @@ func NewSequentialGenerator(prefix string, padLength int) *SequentialGenerator {
 	}
 }
 
-// Generate creates a new sequential ID
 func (g *SequentialGenerator) Generate() string {
 	seq := atomic.AddUint64(&g.sequence, 1)
 
@@ -58,21 +56,18 @@ type TimestampGenerator struct {
 	suffix Generator // Optional suffix generator
 }
 
-// NewTimestampGenerator creates a new timestamp-based generator
 func NewTimestampGenerator(prefix string) *TimestampGenerator {
 	return &TimestampGenerator{
 		prefix: prefix,
 	}
 }
 
-// WithSuffix adds a suffix generator
 func (g *TimestampGenerator) WithSuffix(suffix Generator) *TimestampGenerator {
 	g.suffix = suffix
 
 	return g
 }
 
-// Generate creates a new timestamp-based ID
 func (g *TimestampGenerator) Generate() string {
 	timestamp := time.Now().UnixNano()
 	if g.suffix != nil {
@@ -86,6 +81,7 @@ func (g *TimestampGenerator) Generate() string {
 type RandomGenerator struct {
 	length   int
 	encoding Encoding
+	prefix   string // Optional prefix
 }
 
 // Encoding represents the encoding for random IDs
@@ -97,7 +93,6 @@ const (
 	EncodingBase64URL
 )
 
-// NewRandomGenerator creates a new random generator
 func NewRandomGenerator(length int, encoding Encoding) *RandomGenerator {
 	return &RandomGenerator{
 		length:   length,
@@ -105,9 +100,13 @@ func NewRandomGenerator(length int, encoding Encoding) *RandomGenerator {
 	}
 }
 
-// Generate creates a new random ID
+func (g *RandomGenerator) WithPrefix(prefix string) *RandomGenerator {
+	g.prefix = prefix
+
+	return g
+}
+
 func (g *RandomGenerator) Generate() string {
-	// Calculate number of random bytes needed
 	byteLength := g.length
 	switch g.encoding {
 	case EncodingBase64, EncodingBase64URL:
@@ -116,39 +115,23 @@ func (g *RandomGenerator) Generate() string {
 		byteLength = g.length / 2
 	}
 
-	// Generate random bytes
 	bytes := make([]byte, byteLength)
 	if _, err := rand.Read(bytes); err != nil {
 		// Fallback to UUID in case of error
-		return uuid.New().String()
+		return g.prefix + uuid.New().String()
 	}
 
-	// Encode according to specified encoding
+	var encoded string
 	switch g.encoding {
 	case EncodingBase64:
-		return base64.StdEncoding.EncodeToString(bytes)[:g.length]
+		encoded = base64.StdEncoding.EncodeToString(bytes)[:g.length]
 	case EncodingBase64URL:
-		return base64.URLEncoding.EncodeToString(bytes)[:g.length]
-	default: // EncodingHex
-		return hex.EncodeToString(bytes)[:g.length]
+		encoded = base64.URLEncoding.EncodeToString(bytes)[:g.length]
+	default:
+		encoded = hex.EncodeToString(bytes)[:g.length]
 	}
-}
 
-// CustomGenerator allows for custom ID generation logic
-type CustomGenerator struct {
-	generateFn func() string
-}
-
-// NewCustomGenerator creates a new generator with custom logic
-func NewCustomGenerator(generateFn func() string) *CustomGenerator {
-	return &CustomGenerator{
-		generateFn: generateFn,
-	}
-}
-
-// Generate creates a new ID using the custom function
-func (g *CustomGenerator) Generate() string {
-	return g.generateFn()
+	return g.prefix + encoded
 }
 
 // Common generators
@@ -176,22 +159,9 @@ const (
 
 // Additional helper generators
 var (
-	// Sequential generates IDs like "set_0001"
-	Sequential = NewSequentialGenerator(PrefixSET, 4)
+	// Sequential generates IDs like "set_00000001"
+	SetSequential = NewSequentialGenerator(PrefixSET, 8)
 
-	// TransactionSequential generates IDs like "txn_0001"
-	TransactionSequential = NewSequentialGenerator(PrefixTXN, 4)
+	// TransactionSequential generates IDs like "txn_00000001"
+	TransactionSequential = NewSequentialGenerator(PrefixTXN, 8)
 )
-
-// ValidateID checks if an ID matches the expected format
-func ValidateID(id string, minLength, maxLength int) error {
-	if len(id) < minLength {
-		return fmt.Errorf("ID too short: minimum length is %d", minLength)
-	}
-
-	if maxLength > 0 && len(id) > maxLength {
-		return fmt.Errorf("ID too long: maximum length is %d", maxLength)
-	}
-
-	return nil
-}

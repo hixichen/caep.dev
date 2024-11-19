@@ -1,3 +1,4 @@
+// pkg/set/event/errors.go
 package event
 
 import (
@@ -24,10 +25,12 @@ type EventError struct {
 	Field   string
 }
 
+// Error returns the string representation of the error
 func (e *EventError) Error() string {
 	if e.Field != "" {
 		return fmt.Sprintf("%s: %s (field: %s)", e.Code, e.Message, e.Field)
 	}
+
 	return fmt.Sprintf("%s: %s", e.Code, e.Message)
 }
 
