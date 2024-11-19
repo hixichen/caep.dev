@@ -1,6 +1,6 @@
 # secevent
 
-A comprehensive Go library for building, signing, parsing, and validating Security Event Tokens (SETs) according to the Security Event Token (SET) [RFC 8417](https://tools.ietf.org/html/rfc8417).
+A comprehensive Go library for building, signing, parsing, and validating Security Event Tokens (SecEvents) according to the Security Event Token (SET) [RFC 8417](https://tools.ietf.org/html/rfc8417).
 
 ---
 
@@ -25,7 +25,7 @@ A comprehensive Go library for building, signing, parsing, and validating Securi
 
 - **Complete SET Implementation**: Full support for building, signing, parsing, and validating Security Event Tokens in adherence to RFC 8417.
 - **Out-of-the-box Support for Standard SETs**: Provides out-of-the-box support for CAEP and standard SSF events. Contributions for additional standard event support are welcome.
-- **Custom Event Extensibility**: Users can define custom event types for scenarios not covered by the library.
+- **Event Extensibility**: Users can define event types for scenarios not covered by the library.
 - **Flexible Subject Identifiers**: Supports various subject identifier formats, including email, phone number, issuer and subject pairs, URIs, and more.
 - **Extensible Signing Mechanisms**: Integrate with custom signing functions or hardware security modules (HSMs) when private keys are not directly accessible.
 - **Flexible Key Provisioning for Parsing**: Supports multiple ways to provide verification keys, such as JWKS URLs, JWKS JSON, or direct public keys.
@@ -63,7 +63,7 @@ import (
 
 func main() {
     // Create a builder with configuration
-    setBuilder := builder.NewBuilder(
+    secEventBuilder := builder.NewBuilder(
         builder.WithDefaultIssuer("https://issuer.example.com"),
         builder.WithDefaultIDGenerator(id.NewUUIDGenerator()),
     )
@@ -79,7 +79,7 @@ func main() {
 
     // Create a SET using builder
     // Note: No need to specify issuer and ID as they come from builder defaults
-    set := setBuilder.NewSingleEventSET().
+    secEvent := secEventBuilder.NewSingleEventSET().
         WithAudience("https://receiver.example.com").
         WithSubject(userEmail).
         WithEvent(sessionEvent)
@@ -98,7 +98,7 @@ func main() {
     }
 
     // Sign the SET
-    signedToken, err := signer.Sign(set)
+    signedToken, err := signer.Sign(secEvent)
     if err != nil {
         panic(err)
     }
@@ -106,7 +106,7 @@ func main() {
     fmt.Println("Signed SET:", signedToken)
 
     // Create another SET overriding the defaults
-    nonDefaultsSet := setBuilder.NewSingleEventSET().
+    nonDefaultsSet := secEventBuilder.NewSingleEventSET().
         WithIssuer("https://custom-issuer.example.com"). // Override default issuer
         WithID("unique-set-id").                         // Override generated ID
         WithAudience("https://receiver.example.com").
