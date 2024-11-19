@@ -1,5 +1,3 @@
-// pkg/set/id/generator.go
-
 package id
 
 import (
@@ -18,7 +16,7 @@ type Generator interface {
 	Generate() string
 }
 
-// UUIDGenerator generates UUIDs for SET IDs
+// UUIDGenerator generates UUIDs for SecEvent IDs
 type UUIDGenerator struct{}
 
 func NewUUIDGenerator() *UUIDGenerator {

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/set/event"
+	"github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/event"
 )
 
 // CredentialType represents the type of credential
@@ -62,44 +62,44 @@ func NewCredentialChangeEvent(credType CredentialType, changeType ChangeType) *C
 
 func (e *CredentialChangeEvent) WithFriendlyName(name string) *CredentialChangeEvent {
 	e.FriendlyName = &name
-	
+
 	return e
 }
 
 func (e *CredentialChangeEvent) WithX509Details(issuer, serial string) *CredentialChangeEvent {
 	e.X509Issuer = &issuer
 	e.X509Serial = &serial
-	
+
 	return e
 }
 
 func (e *CredentialChangeEvent) WithFIDO2AAGUID(aaguid string) *CredentialChangeEvent {
 	e.FIDO2AAGUID = &aaguid
-	
+
 	return e
 }
 
 func (e *CredentialChangeEvent) WithEventTimestamp(timestamp int64) *CredentialChangeEvent {
 	e.BaseCAEPEvent.WithEventTimestamp(timestamp)
-	
+
 	return e
 }
 
 func (e *CredentialChangeEvent) WithInitiatingEntity(entity InitiatingEntity) *CredentialChangeEvent {
 	e.BaseCAEPEvent.WithInitiatingEntity(entity)
-	
+
 	return e
 }
 
 func (e *CredentialChangeEvent) WithReasonAdmin(language, reason string) *CredentialChangeEvent {
 	e.BaseCAEPEvent.WithReasonAdmin(language, reason)
-	
+
 	return e
 }
 
 func (e *CredentialChangeEvent) WithReasonUser(language, reason string) *CredentialChangeEvent {
 	e.BaseCAEPEvent.WithReasonUser(language, reason)
-	
+
 	return e
 }
 
@@ -153,7 +153,7 @@ func (e *CredentialChangeEvent) MarshalJSON() ([]byte, error) {
 func (e *CredentialChangeEvent) UnmarshalJSON(data []byte) error {
 	var payload struct {
 		CredentialChangePayload
-		Metadata *EventMetadata `json:"metadata,omitempty"`
+		*EventMetadata
 	}
 
 	if err := json.Unmarshal(data, &payload); err != nil {
@@ -162,9 +162,9 @@ func (e *CredentialChangeEvent) UnmarshalJSON(data []byte) error {
 	}
 
 	e.SetType(AssuranceLevelChange)
-	
+
 	e.CredentialChangePayload = payload.CredentialChangePayload
-	e.Metadata = payload.Metadata
+	e.Metadata = payload.EventMetadata
 
 	return e.Validate()
 }
@@ -203,5 +203,5 @@ func ParseCredentialChangeEvent(data []byte) (event.Event, error) {
 }
 
 func init() {
-	event.RegisterEventParser(AssuranceLevelChange, ParseCredentialChangeEvent)
+	event.RegisterEventParser(CredentialChange, ParseCredentialChangeEvent)
 }

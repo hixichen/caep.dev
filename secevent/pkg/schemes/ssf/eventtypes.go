@@ -1,8 +1,7 @@
-// pkg/schemes/ssf/eventtypes.go
 package ssf
 
 import (
-	"github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/set/event"
+	"github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/event"
 )
 
 // SSF Event Types as defined in the OpenID SSF specification

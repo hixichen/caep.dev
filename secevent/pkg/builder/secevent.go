@@ -1,4 +1,3 @@
-// pkg/set/builder/set.go
 package builder
 
 import (
@@ -7,15 +6,15 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/set/event"
+	"github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/event"
 	"github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/subject"
 )
 
-// SET represents a base Security Event Token that can contain multiple events
-type SET struct {
+// SecEvent represents a base Security Event Token that can contain multiple events
+type SecEvent struct {
 	jwt.RegisteredClaims
 
-	// SET-specific Claims
+	// SecEvent-specific Claims
 	Events  map[event.EventType]event.Event `json:"events"` // REQUIRED
 	Subject subject.Subject                 `json:"sub_id"` // REQUIRED
 
@@ -23,8 +22,8 @@ type SET struct {
 	TransactionID *string `json:"txn,omitempty"` // OPTIONAL
 }
 
-func newSET() *SET {
-	return &SET{
+func newSecEvent() *SecEvent {
+	return &SecEvent{
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt: jwt.NewNumericDate(time.Now()),
 		},
@@ -32,11 +31,11 @@ func newSET() *SET {
 	}
 }
 
-func (s *SET) Valid() error {
+func (s *SecEvent) Valid() error {
 	return s.Validate()
 }
 
-func (s *SET) Validate() error {
+func (s *SecEvent) Validate() error {
 	if s.Issuer == "" {
 		return fmt.Errorf("issuer (iss) claim is required")
 	}
@@ -66,68 +65,68 @@ func (s *SET) Validate() error {
 	return nil
 }
 
-func (s *SET) WithIssuer(issuer string) *SET {
+func (s *SecEvent) WithIssuer(issuer string) *SecEvent {
 	s.Issuer = issuer
 
 	return s
 }
 
-func (s *SET) WithID(id string) *SET {
+func (s *SecEvent) WithID(id string) *SecEvent {
 	s.ID = id
 
 	return s
 }
 
-func (s *SET) WithAudience(audience ...string) *SET {
+func (s *SecEvent) WithAudience(audience ...string) *SecEvent {
 	s.Audience = audience
 
 	return s
 }
 
-func (s *SET) WithSubject(sub subject.Subject) *SET {
+func (s *SecEvent) WithSubject(sub subject.Subject) *SecEvent {
 	s.Subject = sub
 
 	return s
 }
 
-func (s *SET) WithEvent(evt event.Event) *SET {
+func (s *SecEvent) WithEvent(evt event.Event) *SecEvent {
 	s.Events[evt.Type()] = evt
 
 	return s
 }
 
-func (s *SET) WithTransactionID(txn string) *SET {
+func (s *SecEvent) WithTransactionID(txn string) *SecEvent {
 	s.TransactionID = &txn
 
 	return s
 }
 
-func (s *SET) GetExpirationTime() (*jwt.NumericDate, error) {
-	return nil, nil // SET doesn't use expiration time
+func (s *SecEvent) GetExpirationTime() (*jwt.NumericDate, error) {
+	return nil, nil // SecEvent doesn't use expiration time
 }
 
-func (s *SET) GetIssuedAt() (*jwt.NumericDate, error) {
+func (s *SecEvent) GetIssuedAt() (*jwt.NumericDate, error) {
 	return s.IssuedAt, nil
 }
 
-func (s *SET) GetNotBefore() (*jwt.NumericDate, error) {
-	return nil, nil // SET doesn't use not before
+func (s *SecEvent) GetNotBefore() (*jwt.NumericDate, error) {
+	return nil, nil // SecEvent doesn't use not before
 }
 
-func (s *SET) GetIssuer() (string, error) {
+func (s *SecEvent) GetIssuer() (string, error) {
 	return s.Issuer, nil
 }
 
-func (s *SET) GetSubject() (string, error) {
-	return "", nil // SET doesn't use the standard sub claim
+func (s *SecEvent) GetSubject() (string, error) {
+	return "", nil // SecEvent doesn't use the standard sub claim
 }
 
-func (s *SET) GetAudience() (jwt.ClaimStrings, error) {
+func (s *SecEvent) GetAudience() (jwt.ClaimStrings, error) {
 	return s.Audience, nil
 }
 
-func (s *SET) UnmarshalJSON(data []byte) error {
-	type Alias SET
+func (s *SecEvent) UnmarshalJSON(data []byte) error {
+	type Alias SecEvent
 
 	aux := &struct {
 		*Alias
@@ -166,10 +165,10 @@ func (s *SET) UnmarshalJSON(data []byte) error {
 	return s.Validate()
 }
 
-type SingleEventSET struct {
+type SingleEventSecEvent struct {
 	jwt.RegisteredClaims
 
-	// SET-specific Claims
+	// SecEvent-specific Claims
 	Event   event.Event     `json:"-"`      // Will be marshaled in events field
 	Subject subject.Subject `json:"sub_id"` // REQUIRED
 
@@ -177,19 +176,19 @@ type SingleEventSET struct {
 	TransactionID *string `json:"txn,omitempty"` // OPTIONAL
 }
 
-func newSingleEventSET() *SingleEventSET {
-	return &SingleEventSET{
+func newSingleEventSecEvent() *SingleEventSecEvent {
+	return &SingleEventSecEvent{
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt: jwt.NewNumericDate(time.Now()),
 		},
 	}
 }
 
-func (s *SingleEventSET) Valid() error {
+func (s *SingleEventSecEvent) Valid() error {
 	return s.Validate()
 }
 
-func (s *SingleEventSET) Validate() error {
+func (s *SingleEventSecEvent) Validate() error {
 	if s.Issuer == "" {
 		return fmt.Errorf("issuer (iss) claim is required")
 	}
@@ -217,68 +216,68 @@ func (s *SingleEventSET) Validate() error {
 	return nil
 }
 
-func (s *SingleEventSET) WithIssuer(issuer string) *SingleEventSET {
+func (s *SingleEventSecEvent) WithIssuer(issuer string) *SingleEventSecEvent {
 	s.Issuer = issuer
 
 	return s
 }
 
-func (s *SingleEventSET) WithID(id string) *SingleEventSET {
+func (s *SingleEventSecEvent) WithID(id string) *SingleEventSecEvent {
 	s.ID = id
 
 	return s
 }
 
-func (s *SingleEventSET) WithAudience(audience ...string) *SingleEventSET {
+func (s *SingleEventSecEvent) WithAudience(audience ...string) *SingleEventSecEvent {
 	s.Audience = audience
 
 	return s
 }
 
-func (s *SingleEventSET) WithSubject(sub subject.Subject) *SingleEventSET {
+func (s *SingleEventSecEvent) WithSubject(sub subject.Subject) *SingleEventSecEvent {
 	s.Subject = sub
 
 	return s
 }
 
-func (s *SingleEventSET) WithEvent(evt event.Event) *SingleEventSET {
+func (s *SingleEventSecEvent) WithEvent(evt event.Event) *SingleEventSecEvent {
 	s.Event = evt
 
 	return s
 }
 
-func (s *SingleEventSET) WithTransactionID(txn string) *SingleEventSET {
+func (s *SingleEventSecEvent) WithTransactionID(txn string) *SingleEventSecEvent {
 	s.TransactionID = &txn
 
 	return s
 }
 
-func (s *SingleEventSET) GetExpirationTime() (*jwt.NumericDate, error) {
-	return nil, nil // SET doesn't use expiration time
+func (s *SingleEventSecEvent) GetExpirationTime() (*jwt.NumericDate, error) {
+	return nil, nil // SecEvent doesn't use expiration time
 }
 
-func (s *SingleEventSET) GetIssuedAt() (*jwt.NumericDate, error) {
+func (s *SingleEventSecEvent) GetIssuedAt() (*jwt.NumericDate, error) {
 	return s.IssuedAt, nil
 }
 
-func (s *SingleEventSET) GetNotBefore() (*jwt.NumericDate, error) {
-	return nil, nil // SET doesn't use not before
+func (s *SingleEventSecEvent) GetNotBefore() (*jwt.NumericDate, error) {
+	return nil, nil // SecEvent doesn't use not before
 }
 
-func (s *SingleEventSET) GetIssuer() (string, error) {
+func (s *SingleEventSecEvent) GetIssuer() (string, error) {
 	return s.Issuer, nil
 }
 
-func (s *SingleEventSET) GetSubject() (string, error) {
-	return "", nil // SET doesn't use the standard sub claim
+func (s *SingleEventSecEvent) GetSubject() (string, error) {
+	return "", nil // SecEvent doesn't use the standard sub claim
 }
 
-func (s *SingleEventSET) GetAudience() (jwt.ClaimStrings, error) {
+func (s *SingleEventSecEvent) GetAudience() (jwt.ClaimStrings, error) {
 	return s.Audience, nil
 }
 
-func (s *SingleEventSET) MarshalJSON() ([]byte, error) {
-	type Alias SingleEventSET
+func (s *SingleEventSecEvent) MarshalJSON() ([]byte, error) {
+	type Alias SingleEventSecEvent
 
 	temp := struct {
 		*Alias
@@ -295,8 +294,8 @@ func (s *SingleEventSET) MarshalJSON() ([]byte, error) {
 	return json.Marshal(temp)
 }
 
-func (s *SingleEventSET) UnmarshalJSON(data []byte) error {
-	type Alias SingleEventSET
+func (s *SingleEventSecEvent) UnmarshalJSON(data []byte) error {
+	type Alias SingleEventSecEvent
 
 	aux := &struct {
 		*Alias
@@ -320,7 +319,7 @@ func (s *SingleEventSET) UnmarshalJSON(data []byte) error {
 	}
 
 	if len(aux.Events) != 1 {
-		return fmt.Errorf("exactly one event must be present in a single-event SET")
+		return fmt.Errorf("exactly one event must be present in a single-event SecEvent")
 	}
 
 	var eventType event.EventType

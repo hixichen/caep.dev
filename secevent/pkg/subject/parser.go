@@ -1,5 +1,3 @@
-// pkg/ssfset/subject/parser.go
-
 package subject
 
 import (

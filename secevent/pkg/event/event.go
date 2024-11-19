@@ -1,4 +1,3 @@
-// pkg/set/event/event.go
 package event
 
 import (

@@ -1,10 +1,9 @@
-// pkg/schemes/caep/event.go
 package caep
 
 import (
 	"encoding/json"
 
-	"github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/set/event"
+	"github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/event"
 )
 
 // CAEPEvent is the interface that all CAEP events must implement
@@ -74,6 +73,54 @@ func (e *BaseCAEPEvent) WithReasonUser(language, reason string) CAEPEvent {
 	e.Metadata.WithReasonUser(language, reason)
 
 	return e
+}
+
+func (e *BaseCAEPEvent) GetEventTimestamp() (int64, bool) {
+	if e.Metadata == nil || e.Metadata.EventTimestamp == nil {
+		return 0, false
+	}
+
+	return *e.Metadata.EventTimestamp, true
+}
+
+func (e *BaseCAEPEvent) GetInitiatingEntity() (InitiatingEntity, bool) {
+	if e.Metadata == nil || e.Metadata.InitiatingEntity == nil {
+		return InitiatingEntitySystem, false
+	}
+
+	return *e.Metadata.InitiatingEntity, true
+}
+
+func (e *BaseCAEPEvent) GetReasonAdmin(language string) (string, bool) {
+	if e.Metadata == nil {
+		return "", false
+	}
+
+	return e.Metadata.GetReasonAdmin(language)
+}
+
+func (e *BaseCAEPEvent) GetReasonUser(language string) (string, bool) {
+	if e.Metadata == nil {
+		return "", false
+	}
+
+	return e.Metadata.GetReasonUser(language)
+}
+
+func (e *BaseCAEPEvent) GetAllReasonAdmin() map[string]string {
+	if e.Metadata == nil {
+		return nil
+	}
+
+	return e.Metadata.ReasonAdmin
+}
+
+func (e *BaseCAEPEvent) GetAllReasonUser() map[string]string {
+	if e.Metadata == nil {
+		return nil
+	}
+
+	return e.Metadata.ReasonUser
 }
 
 func (e *BaseCAEPEvent) ValidateMetadata() error {

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/set/event"
+	"github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/event"
 )
 
 // ComplianceStatus represents the compliance status of a device
@@ -94,7 +94,7 @@ func (e *DeviceComplianceChangeEvent) MarshalJSON() ([]byte, error) {
 func (e *DeviceComplianceChangeEvent) UnmarshalJSON(data []byte) error {
 	var payload struct {
 		DeviceComplianceChangePayload
-		Metadata *EventMetadata `json:"metadata,omitempty"`
+		*EventMetadata
 	}
 
 	if err := json.Unmarshal(data, &payload); err != nil {
@@ -105,7 +105,7 @@ func (e *DeviceComplianceChangeEvent) UnmarshalJSON(data []byte) error {
 	e.SetType(DeviceComplianceChange)
 
 	e.DeviceComplianceChangePayload = payload.DeviceComplianceChangePayload
-	e.Metadata = payload.Metadata
+	e.Metadata = payload.EventMetadata
 
 	return e.Validate()
 }

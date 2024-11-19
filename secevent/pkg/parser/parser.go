@@ -1,5 +1,3 @@
-// pkg/set/parser/parser.go
-
 package parser
 
 import (
@@ -10,13 +8,13 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/set/builder"
+	"github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/builder"
 
 	_ "github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/schemes/caep" // Initialize CAEP events
 	_ "github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/schemes/ssf"  // Initialize SSF events
 )
 
-// Parser parses and validates SETs
+// Parser parses and validates SecEvents
 type Parser struct {
 	keySet           jwk.Set
 	jwksURL          *url.URL
@@ -56,9 +54,14 @@ func WithJWKSJSON(jwksJSON []byte) Option {
 }
 
 // WithPublicKey sets a direct public key
-func WithPublicKey(key interface{}) Option {
+func WithPublicKey(key interface{}, kid string) Option {
 	return func(p *Parser) {
 		if rawKey, err := jwk.FromRaw(key); err == nil {
+			// Set the key ID
+			if err := rawKey.Set(jwk.KeyIDKey, kid); err != nil {
+				return
+			}
+
 			keySet := jwk.NewSet()
 			if err := keySet.AddKey(rawKey); err != nil {
 				return
@@ -84,7 +87,7 @@ func WithExpectedAudience(audience ...string) Option {
 	}
 }
 
-// NewParser creates a new SET parser with the provided options
+// NewParser creates a new SecEvent parser with the provided options
 func NewParser(opts ...Option) *Parser {
 	p := &Parser{}
 	for _, opt := range opts {
@@ -166,9 +169,9 @@ func (p *Parser) getParserOptions() []jwt.ParserOption {
 	return options
 }
 
-// ParseSET parses and validates a signed SET
-func (p *Parser) ParseSET(tokenString string) (*builder.SET, error) {
-	var set builder.SET
+// ParseSecEvent parses and validates a signed SecEvent
+func (p *Parser) ParseSecEvent(tokenString string) (*builder.SecEvent, error) {
+	var set builder.SecEvent
 
 	parser := jwt.NewParser(p.getParserOptions()...)
 
@@ -184,9 +187,9 @@ func (p *Parser) ParseSET(tokenString string) (*builder.SET, error) {
 	return &set, nil
 }
 
-// ParseSingleEventSET parses and validates a signed SingleEventSET
-func (p *Parser) ParseSingleEventSET(tokenString string) (*builder.SingleEventSET, error) {
-	var set builder.SingleEventSET
+// ParseSingleEventSecEvent parses and validates a signed SingleEventSecEvent
+func (p *Parser) ParseSingleEventSecEvent(tokenString string) (*builder.SingleEventSecEvent, error) {
+	var set builder.SingleEventSecEvent
 
 	parser := jwt.NewParser(p.getParserOptions()...)
 
@@ -202,9 +205,9 @@ func (p *Parser) ParseSingleEventSET(tokenString string) (*builder.SingleEventSE
 	return &set, nil
 }
 
-// ParseSETNoVerify parses a SET without validation
-func (p *Parser) ParseSETNoVerify(tokenString string) (*builder.SET, error) {
-	var set builder.SET
+// ParseSecEventNoVerify parses a SecEvent without validation
+func (p *Parser) ParseSecEventNoVerify(tokenString string) (*builder.SecEvent, error) {
+	var set builder.SecEvent
 
 	parser := jwt.NewParser(jwt.WithoutClaimsValidation())
 
@@ -216,9 +219,9 @@ func (p *Parser) ParseSETNoVerify(tokenString string) (*builder.SET, error) {
 	return &set, nil
 }
 
-// ParseSingleEventSETNoVerify parses a SingleEventSET without validation
-func (p *Parser) ParseSingleEventSETNoVerify(tokenString string) (*builder.SingleEventSET, error) {
-	var set builder.SingleEventSET
+// ParseSingleEventSecEventNoVerify parses a SingleEventSecEvent without validation
+func (p *Parser) ParseSingleEventSecEventNoVerify(tokenString string) (*builder.SingleEventSecEvent, error) {
+	var set builder.SingleEventSecEvent
 
 	parser := jwt.NewParser(jwt.WithoutClaimsValidation())
 

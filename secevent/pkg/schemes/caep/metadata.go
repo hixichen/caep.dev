@@ -1,8 +1,7 @@
-// pkg/schemes/caep/metadata.go
 package caep
 
 import (
-	"github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/set/event"
+	"github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/event"
 )
 
 // InitiatingEntity represents who/what initiated an event
@@ -138,6 +137,20 @@ func (m *EventMetadata) GetReasonUser(language string) (string, bool) {
 	reason, ok := m.ReasonUser[language]
 
 	return reason, ok
+}
+
+func (m *EventMetadata) GetAllReasonAdmin() map[string]string {
+	if m.ReasonAdmin == nil {
+		return nil
+	}
+	return m.ReasonAdmin
+}
+
+func (m *EventMetadata) GetAllReasonUser() map[string]string {
+	if m.ReasonUser == nil {
+		return nil
+	}
+	return m.ReasonUser
 }
 
 func (m *EventMetadata) Validate() error {

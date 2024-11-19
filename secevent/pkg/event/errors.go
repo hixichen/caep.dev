@@ -1,4 +1,3 @@
-// pkg/set/event/errors.go
 package event
 
 import (

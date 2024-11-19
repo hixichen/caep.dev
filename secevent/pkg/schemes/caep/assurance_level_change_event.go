@@ -1,11 +1,10 @@
-// pkg/schemes/caep/events/assurance.go
 package caep
 
 import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/set/event"
+	"github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/event"
 )
 
 // AssuranceLevel represents NIST Authenticator Assurance Level (AAL)
@@ -135,7 +134,7 @@ func (e *AssuranceLevelChangeEvent) MarshalJSON() ([]byte, error) {
 func (e *AssuranceLevelChangeEvent) UnmarshalJSON(data []byte) error {
 	var payload struct {
 		AssuranceLevelChangePayload
-		Metadata *EventMetadata `json:"metadata,omitempty"`
+		*EventMetadata
 	}
 
 	if err := json.Unmarshal(data, &payload); err != nil {
@@ -146,7 +145,7 @@ func (e *AssuranceLevelChangeEvent) UnmarshalJSON(data []byte) error {
 	e.SetType(AssuranceLevelChange)
 
 	e.AssuranceLevelChangePayload = payload.AssuranceLevelChangePayload
-	e.Metadata = payload.Metadata
+	e.Metadata = payload.EventMetadata
 
 	return e.Validate()
 }

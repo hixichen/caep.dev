@@ -1,8 +1,7 @@
-// pkg/schemes/ssf/event.go
 package ssf
 
 import (
-	"github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/set/event"
+	"github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/event"
 )
 
 // SSFEvent is the interface that all SSF events must implement

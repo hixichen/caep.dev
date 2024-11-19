@@ -1,10 +1,9 @@
-// pkg/schemes/ssf/events/streamupdate.go
 package ssf
 
 import (
 	"encoding/json"
 
-	"github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/set/event"
+	"github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/event"
 )
 
 // StreamStatus represents the possible states of a stream

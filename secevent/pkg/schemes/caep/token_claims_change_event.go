@@ -3,7 +3,7 @@ package caep
 import (
 	"encoding/json"
 
-	"github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/set/event"
+	"github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/event"
 )
 
 type TokenClaimsChangePayload struct {
@@ -70,7 +70,7 @@ func (e *TokenClaimsChangeEvent) MarshalJSON() ([]byte, error) {
 func (e *TokenClaimsChangeEvent) UnmarshalJSON(data []byte) error {
 	var payload struct {
 		TokenClaimsChangePayload
-		Metadata *EventMetadata `json:"metadata,omitempty"`
+		*EventMetadata
 	}
 
 	if err := json.Unmarshal(data, &payload); err != nil {
@@ -81,7 +81,7 @@ func (e *TokenClaimsChangeEvent) UnmarshalJSON(data []byte) error {
 	e.SetType(TokenClaimsChange)
 
 	e.TokenClaimsChangePayload = payload.TokenClaimsChangePayload
-	e.Metadata = payload.Metadata
+	e.Metadata = payload.EventMetadata
 
 	return e.Validate()
 }

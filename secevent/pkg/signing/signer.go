@@ -1,5 +1,3 @@
-// pkg/set/signing/signer.go
-
 package signing
 
 import (

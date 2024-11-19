@@ -1,6 +1,6 @@
 # secevent
 
-A comprehensive Go library for building, signing, parsing, and validating Security Event Tokens (SecEvents) according to the Security Event Token (SET) [RFC 8417](https://tools.ietf.org/html/rfc8417).
+A comprehensive Go library for building, signing, parsing, and validating Security Event Tokens (SecEvents) according to the Security Event Token [RFC 8417](https://tools.ietf.org/html/rfc8417).
 
 ---
 
@@ -9,8 +9,8 @@ A comprehensive Go library for building, signing, parsing, and validating Securi
 - [Features](#features)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
-  - [Building a SET](#building-a-set)
-  - [Parsing a SET](#parsing-a-set)
+  - [Building a SecEvent](#building-a-secevent)
+  - [Parsing a SecEvent](#parsing-a-secevent)
 - [Standard Events Support](#standard-events-support)
 - [Defining Custom Events](#defining-custom-events)
 - [Using Custom Signers](#using-custom-signers)
@@ -23,8 +23,8 @@ A comprehensive Go library for building, signing, parsing, and validating Securi
 
 ## Features
 
-- **Complete SET Implementation**: Full support for building, signing, parsing, and validating Security Event Tokens in adherence to RFC 8417.
-- **Out-of-the-box Support for Standard SETs**: Provides out-of-the-box support for CAEP and standard SSF events. Contributions for additional standard event support are welcome.
+- **Complete SecEvent Implementation**: Full support for building, signing, parsing, and validating Security Event Tokens in adherence to RFC 8417.
+- **Out-of-the-box Support for Standard SecEvents**: Provides out-of-the-box support for CAEP and standard SSF events. Contributions for additional standard event support are welcome.
 - **Event Extensibility**: Users can define event types for scenarios not covered by the library.
 - **Flexible Subject Identifiers**: Supports various subject identifier formats, including email, phone number, issuer and subject pairs, URIs, and more.
 - **Extensible Signing Mechanisms**: Integrate with custom signing functions or hardware security modules (HSMs) when private keys are not directly accessible.
@@ -43,7 +43,7 @@ go get github.com/sgnl-ai/caep.dev-receiver/secevent
 
 ## Quick Start
 
-### Building a SET
+### Building a SecEvent
 
 ```go
 package main
@@ -56,8 +56,8 @@ import (
     "time"
 
     "github.com/sgnl-ai/caep.dev-receiver/secevent/pkg/schemes/caep"
-    "github.com/sgnl-ai/caep.dev/secevent/pkg/set/builder"
-    "github.com/sgnl-ai/caep.dev/secevent/pkg/set/signing"
+    "github.com/sgnl-ai/caep.dev/secevent/pkg/builder"
+    "github.com/sgnl-ai/caep.dev/secevent/pkg/signing"
     "github.com/sgnl-ai/caep.dev/secevent/pkg/subject"
 )
 
@@ -77,9 +77,9 @@ func main() {
     // Create a subject (e.g., email)
     userEmail := subject.NewEmailSubject("user@example.com")
 
-    // Create a SET using builder
+    // Create a SecEvent using builder
     // Note: No need to specify issuer and ID as they come from builder defaults
-    secEvent := secEventBuilder.NewSingleEventSET().
+    secEvent := secEventBuilder.NewSingleEventSecEvent().
         WithAudience("https://receiver.example.com").
         WithSubject(userEmail).
         WithEvent(sessionEvent)
@@ -97,60 +97,60 @@ func main() {
         panic(err)
     }
 
-    // Sign the SET
+    // Sign the SecEvent
     signedToken, err := signer.Sign(secEvent)
     if err != nil {
         panic(err)
     }
 
-    fmt.Println("Signed SET:", signedToken)
+    fmt.Println("Signed SecEvent:", signedToken)
 
-    // Create another SET overriding the defaults
-    nonDefaultsSet := secEventBuilder.NewSingleEventSET().
+    // Create another SecEvent overriding the defaults
+    nonDefaultsSecEvent := secEventBuilder.NewSingleEventSecEvent().
         WithIssuer("https://custom-issuer.example.com"). // Override default issuer
-        WithID("unique-set-id").                         // Override generated ID
+        WithID("unique-sec-event-id").                         // Override generated ID
         WithAudience("https://receiver.example.com").
         WithSubject(userEmail).
         WithEvent(sessionEvent)
 }
 ```
 
-### Parsing a SET
+### Parsing a SecEvent
 
 ```go
 package main
 
 import (
     "fmt"
-    "github.com/sgnl-ai/caep.dev/secevent/pkg/set/parser"
+    "github.com/sgnl-ai/caep.dev/secevent/pkg/parser"
 )
 
 func main() {
-    tokenString := "..." // Your SET JWT string
+    tokenString := "..." // Your SecEvent JWT string
 
     // Create a parser with JWKS URL
-    setParser := parser.NewParser(
+    secEventParser := parser.NewParser(
         parser.WithJWKSURL("https://issuer.example.com/jwks.json"),
         parser.WithExpectedIssuer("https://issuer.example.com"),
         parser.WithExpectedAudience("https://receiver.example.com"),
     )
 
-    // Parse SET with signature verification
-    set, err := setParser.ParseSingleEventSET(tokenString)
+    // Parse SecEvent with signature verification
+    secEvent, err := secEventParser.ParseSingleEventSecEvent(tokenString)
     if err != nil {
         panic(err)
     }
 
-    // Access SET's event
-    event := set.Event
+    // Access SecEvent's event
+    event := secEvent.Event
     fmt.Printf("Event Type: %s\n", event.Type())
 
-    // Access SET's subject
-    subject := set.Subject
+    // Access SecEvent's subject
+    subject := secEvent.Subject
     fmt.Printf("Subject Format: %s\n", subject.Format())
 
     // Parse without verification (useful for debugging)
-    unverifiedSet, err := setParser.ParseSingleEventSETNoVerify(tokenString)
+    unverifiedSecEvent, err := secEventParser.ParseSingleEventSecEventNoVerify(tokenString)
     if err != nil {
         panic(err)
     }
@@ -161,7 +161,7 @@ func main() {
 
 ## Standard Events Support
 
-The library provides supports for standard SETs. As of now, the following standard events are supported:
+The library provides supports for standard SecEvents. As of now, the following standard events are supported:
 
 CAEP Events:
 - `token-claims-change`
@@ -215,8 +215,8 @@ import (
     "encoding/json"
     "fmt"
 
-    "github.com/sgnl-ai/caep.dev/secevent/pkg/set/event"
-    "github.com/sgnl-ai/caep.dev/secevent/pkg/set/builder"
+    "github.com/sgnl-ai/caep.dev/secevent/pkg/event"
+    "github.com/sgnl-ai/caep.dev/secevent/pkg/builder"
     "github.com/sgnl-ai/caep.dev/secevent/pkg/subject"
 )
 
@@ -302,8 +302,8 @@ func main() {
     // Create a subject
     userEmail := subject.NewEmailSubject("user@example.com")
 
-    // Build the SET
-    set := builder.NewSingleEventSET().
+    // Build the SecEvent
+    secEvent := builder.NewSingleEventSecEvent().
         WithIssuer("https://issuer.example.com").
         WithID("unique-id").
         WithSubject(userEmail).
@@ -327,7 +327,7 @@ package main
 import (
     "strings"
     "github.com/golang-jwt/jwt/v5"
-    "github.com/sgnl-ai/caep.dev/secevent/pkg/set/signing"
+    "github.com/sgnl-ai/caep.dev/secevent/pkg/signing"
 )
 
 // CustomSigner implements the Signer interface
@@ -339,9 +339,9 @@ func (s *CustomSigner) Sign(claims jwt.Claims) (string, error) {
     // Create token with claims
     token := jwt.NewWithClaims(s.signingMethod, claims)
     
-    // Set required headers for SETs
+    // Set required headers for SecEvents
     token.Header["kid"] = s.kid  // Key ID
-    token.Header["typ"] = "secevent+jwt"  // Token type for SETs
+    token.Header["typ"] = "secevent+jwt"  // Token type for SecEvents
     
     // Obtain the signing string
     signingString, err := token.SigningString()
@@ -368,12 +368,12 @@ func externalSign(signingString string) (string, error) {
 func main() {
     customSigner := &CustomSigner{}
 
-    // Use the custom signer with your SET
-    set := builder.NewSingleEventSET().
+    // Use the custom signer with your SecEvent
+    secEvent := builder.NewSingleEventSecEvent().
         WithIssuer("https://issuer.example.com")
-        // ... other SET configuration
+        // ... other SecEvent configuration
 
-    signedToken, err := customSigner.Sign(set)
+    signedToken, err := customSigner.Sign(secEvent)
     if err != nil {
         panic(err)
     }
@@ -421,7 +421,7 @@ func main() {
         WithUser(emailSubject).
         WithDevice(subject.NewOpaqueSubject("device-123"))
 
-    // Use these subjects when creating SETs
+    // Use these subjects when creating SecEvents
 }
 ```
 
@@ -429,7 +429,7 @@ func main() {
 
 ## ID Generators
 
-Customize how SET IDs (`jti`) are generated.
+Customize how SecEvent IDs (`jti`) are generated.
 
 **Built-in Generators**
 
@@ -445,7 +445,7 @@ package main
 
 import (
     "github.com/sgnl-ai/caep.dev/secevent/pkg/id"
-    "github.com/sgnl-ai/caep.dev/secevent/pkg/set/builder"
+    "github.com/sgnl-ai/caep.dev/secevent/pkg/builder"
 )
 
 // Define a custom generator
@@ -457,12 +457,12 @@ func (g *customGenerator) Generate() string {
 
 func main() {
     // Use built-in UUID generator
-    set1 := builder.NewSingleEventSET().
+    secEvent1 := builder.NewSingleEventSecEvent().
         WithIDGenerator(id.NewUUIDGenerator())
 
     // Use custom generator
     customGen := &customGenerator{}
-    set2 := builder.NewSingleEventSET().
+    secEvent2 := builder.NewSingleEventSecEvent().
         WithIDGenerator(customGen)
 }
 ```
@@ -471,7 +471,7 @@ func main() {
 
 ## Providing Verification Keys
 
-When parsing and verifying SETs, you can provide verification keys in multiple ways:
+When parsing and verifying SecEvents, you can provide verification keys in multiple ways:
 
 **Using JWKS URL**
 
