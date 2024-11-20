@@ -169,7 +169,25 @@ func (p *Parser) getParserOptions() []jwt.ParserOption {
 	return options
 }
 
-// ParseSecEvent parses and validates a signed SecEvent
+// ParseMultiSecEvent parses and validates a signed SecEvent
+func (p *Parser) ParseMultiSecEvent(tokenString string) (*builder.MultiSecEvent, error) {
+	var set builder.MultiSecEvent
+
+	parser := jwt.NewParser(p.getParserOptions()...)
+
+	token, err := parser.ParseWithClaims(tokenString, &set, p.getKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse token: %w", err)
+	}
+
+	if !token.Valid {
+		return nil, fmt.Errorf("invalid token")
+	}
+
+	return &set, nil
+}
+
+// ParseSecEvent parses and validates a signed SingleEventSecEvent
 func (p *Parser) ParseSecEvent(tokenString string) (*builder.SecEvent, error) {
 	var set builder.SecEvent
 
@@ -187,27 +205,9 @@ func (p *Parser) ParseSecEvent(tokenString string) (*builder.SecEvent, error) {
 	return &set, nil
 }
 
-// ParseSingleEventSecEvent parses and validates a signed SingleEventSecEvent
-func (p *Parser) ParseSingleEventSecEvent(tokenString string) (*builder.SingleEventSecEvent, error) {
-	var set builder.SingleEventSecEvent
-
-	parser := jwt.NewParser(p.getParserOptions()...)
-
-	token, err := parser.ParseWithClaims(tokenString, &set, p.getKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse token: %w", err)
-	}
-
-	if !token.Valid {
-		return nil, fmt.Errorf("invalid token")
-	}
-
-	return &set, nil
-}
-
-// ParseSecEventNoVerify parses a SecEvent without validation
-func (p *Parser) ParseSecEventNoVerify(tokenString string) (*builder.SecEvent, error) {
-	var set builder.SecEvent
+// ParseMultiSecEventNoVerify parses a SecEvent without validation
+func (p *Parser) ParseMultiSecEventNoVerify(tokenString string) (*builder.MultiSecEvent, error) {
+	var set builder.MultiSecEvent
 
 	parser := jwt.NewParser(jwt.WithoutClaimsValidation())
 
@@ -219,9 +219,9 @@ func (p *Parser) ParseSecEventNoVerify(tokenString string) (*builder.SecEvent, e
 	return &set, nil
 }
 
-// ParseSingleEventSecEventNoVerify parses a SingleEventSecEvent without validation
-func (p *Parser) ParseSingleEventSecEventNoVerify(tokenString string) (*builder.SingleEventSecEvent, error) {
-	var set builder.SingleEventSecEvent
+// ParseSecEventNoVerify parses a SingleEventSecEvent without validation
+func (p *Parser) ParseSecEventNoVerify(tokenString string) (*builder.SecEvent, error) {
+	var set builder.SecEvent
 
 	parser := jwt.NewParser(jwt.WithoutClaimsValidation())
 

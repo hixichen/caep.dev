@@ -31,7 +31,7 @@ func main() {
 	userEmail, _ := subject.NewEmailSubject("user@example.com")
 
 	// Create a SecEvent using builder
-	secEvent := secEventBuilder.NewSingleEventSecEvent().
+	secEvent := secEventBuilder.NewSecEvent().
 		WithAudience("https://receiver.example.com").
 		WithSubject(userEmail).
 		WithEvent(sessionRevokedEvent)

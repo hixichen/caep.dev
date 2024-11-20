@@ -41,9 +41,9 @@ func NewBuilder(opts ...Option) *Builder {
 	return b
 }
 
-// NewSecEvent creates a new multi-event SecEvent with default configurations
-func (b *Builder) NewSecEvent() *SecEvent {
-	secEvent := newSecEvent()
+// NewMultiSecEvent creates a new multi-event SecEvent with default configurations
+func (b *Builder) NewMultiSecEvent() *MultiSecEvent {
+	secEvent := newMultiSecEvent()
 	if b.defaultIssuer != "" {
 		secEvent.WithIssuer(b.defaultIssuer)
 	}
@@ -55,9 +55,9 @@ func (b *Builder) NewSecEvent() *SecEvent {
 	return secEvent
 }
 
-// NewSingleEventSecEvent creates a new single-event SecEvent with default configurations
-func (b *Builder) NewSingleEventSecEvent() *SingleEventSecEvent {
-	secEvent := newSingleEventSecEvent()
+// NewSecEvent creates a new single-event SecEvent with default configurations
+func (b *Builder) NewSecEvent() *SecEvent {
+	secEvent := newSecEvent()
 	if b.defaultIssuer != "" {
 		secEvent.WithIssuer(b.defaultIssuer)
 	}

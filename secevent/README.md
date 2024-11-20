@@ -79,7 +79,7 @@ func main() {
 
     // Create a SecEvent using builder
     // Note: No need to specify issuer and ID as they come from builder defaults
-    secEvent := secEventBuilder.NewSingleEventSecEvent().
+    secEvent := secEventBuilder.NewSecEvent().
         WithAudience("https://receiver.example.com").
         WithSubject(userEmail).
         WithEvent(sessionEvent)
@@ -106,8 +106,8 @@ func main() {
     fmt.Println("Signed SecEvent:", signedToken)
 
     // Create another SecEvent overriding the defaults
-    nonDefaultsSecEvent := secEventBuilder.NewSingleEventSecEvent().
-        WithIssuer("https://custom-issuer.example.com"). // Override default issuer
+    nonDefaultsSecEvent := secEventBuilder.NewSecEvent().
+        WithIssuer("https://custom-issuer.example.com").        // Override default issuer
         WithID("unique-sec-event-id").                         // Override generated ID
         WithAudience("https://receiver.example.com").
         WithSubject(userEmail).
@@ -136,7 +136,7 @@ func main() {
     )
 
     // Parse SecEvent with signature verification
-    secEvent, err := secEventParser.ParseSingleEventSecEvent(tokenString)
+    secEvent, err := secEventParser.ParseSecEvent(tokenString)
     if err != nil {
         panic(err)
     }
@@ -150,7 +150,7 @@ func main() {
     fmt.Printf("Subject Format: %s\n", subject.Format())
 
     // Parse without verification (useful for debugging)
-    unverifiedSecEvent, err := secEventParser.ParseSingleEventSecEventNoVerify(tokenString)
+    unverifiedSecEvent, err := secEventParser.ParseSecEventNoVerify(tokenString)
     if err != nil {
         panic(err)
     }
@@ -303,7 +303,7 @@ func main() {
     userEmail := subject.NewEmailSubject("user@example.com")
 
     // Build the SecEvent
-    secEvent := builder.NewSingleEventSecEvent().
+    secEvent := builder.NewSecEvent().
         WithIssuer("https://issuer.example.com").
         WithID("unique-id").
         WithSubject(userEmail).
@@ -369,7 +369,7 @@ func main() {
     customSigner := &CustomSigner{}
 
     // Use the custom signer with your SecEvent
-    secEvent := builder.NewSingleEventSecEvent().
+    secEvent := builder.NewSecEvent().
         WithIssuer("https://issuer.example.com")
         // ... other SecEvent configuration
 
@@ -457,12 +457,12 @@ func (g *customGenerator) Generate() string {
 
 func main() {
     // Use built-in UUID generator
-    secEvent1 := builder.NewSingleEventSecEvent().
+    secEvent1 := builder.NewSecEvent().
         WithIDGenerator(id.NewUUIDGenerator())
 
     // Use custom generator
     customGen := &customGenerator{}
-    secEvent2 := builder.NewSingleEventSecEvent().
+    secEvent2 := builder.NewSecEvent().
         WithIDGenerator(customGen)
 }
 ```

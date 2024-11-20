@@ -43,7 +43,7 @@ func main() {
 	)
 
 	// Parse without verification for demonstration
-	secEvent, err := secEventParser.ParseSingleEventSecEventNoVerify(signedSecEvent)
+	secEvent, err := secEventParser.ParseSecEventNoVerify(signedSecEvent)
 	if err != nil {
 		panic(fmt.Errorf("failed to parse event: %w", err))
 	}
@@ -141,7 +141,7 @@ func generateSignedAssuranceLevelChangeSecEvent(privateKey *ecdsa.PrivateKey) (s
 	}
 
 	// Create a SecEvent using builder
-	secEvent := secEventBuilder.NewSingleEventSecEvent().
+	secEvent := secEventBuilder.NewSecEvent().
 		WithAudience("https://receiver.example.com").
 		WithSubject(userEmail).
 		WithEvent(assuranceLevelChangeEvent)

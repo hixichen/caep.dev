@@ -42,7 +42,7 @@ func main() {
 	)
 
 	// Parse without verification for demonstration
-	secEvent, err := secEventParser.ParseSingleEventSecEventNoVerify(signedSecEvent)
+	secEvent, err := secEventParser.ParseSecEventNoVerify(signedSecEvent)
 	if err != nil {
 		panic(fmt.Errorf("failed to parse event: %w", err))
 	}
@@ -124,7 +124,7 @@ func generateSignedStreamUpdateSecEvent(privateKey *ecdsa.PrivateKey) (string, e
 	streamSubject, _ := subject.NewOpaqueSubject("example-stream-id")
 
 	// Create a SecEvent using builder
-	secEvent := secEventBuilder.NewSingleEventSecEvent().
+	secEvent := secEventBuilder.NewSecEvent().
 		WithAudience("https://receiver.example.com").
 		WithSubject(streamSubject).
 		WithEvent(streamUpdateEvent)

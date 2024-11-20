@@ -28,7 +28,7 @@ func main() {
 	streamSubject, _ := subject.NewOpaqueSubject("example-stream-id")
 
 	// Create a SecEvent using builder
-	secEvent := secEventBuilder.NewSingleEventSecEvent().
+	secEvent := secEventBuilder.NewSecEvent().
 		WithAudience("https://receiver.example.com").
 		WithSubject(streamSubject).
 		WithEvent(verificationEvent)
