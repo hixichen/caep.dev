@@ -1,0 +1,131 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ssf-broker-ingress
+  labels:
+    app: ssf-broker
+    component: event-broker
+  annotations:
+    # NGINX Ingress Controller annotations
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+
+    # SSL/TLS configuration
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+
+    # Rate limiting (adjust based on your needs)
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+
+    # Request size limits
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+
+    # Timeouts
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+
+    # Security headers
+    nginx.ingress.kubernetes.io/server-snippet: |
+      add_header X-Content-Type-Options nosniff;
+      add_header X-Frame-Options DENY;
+      add_header X-XSS-Protection "1; mode=block";
+      add_header Strict-Transport-Security "max-age=31536000; includeSubDomains";
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - ssf-broker.your-domain.com
+    secretName: ssf-broker-tls
+  rules:
+  - host: ssf-broker.your-domain.com
+    http:
+      paths:
+      # SSF standard endpoints
+      - path: /events
+        pathType: Exact
+        backend:
+          service:
+            name: ssf-broker-service
+            port:
+              number: 80
+      - path: /.well-known/ssf_configuration
+        pathType: Exact
+        backend:
+          service:
+            name: ssf-broker-service
+            port:
+              number: 80
+
+      # Management endpoints
+      - path: /health
+        pathType: Exact
+        backend:
+          service:
+            name: ssf-broker-service
+            port:
+              number: 80
+      - path: /ready
+        pathType: Exact
+        backend:
+          service:
+            name: ssf-broker-service
+            port:
+              number: 80
+      - path: /metrics
+        pathType: Exact
+        backend:
+          service:
+            name: ssf-broker-service
+            port:
+              number: 80
+
+      # Registration API
+      - path: /api/v1
+        pathType: Prefix
+        backend:
+          service:
+            name: ssf-broker-service
+            port:
+              number: 80
+---
+# Alternative ingress for internal management (no TLS, rate limiting)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ssf-broker-internal-ingress
+  labels:
+    app: ssf-broker
+    component: event-broker
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    # Restrict to internal networks only
+    nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: ssf-broker-internal.your-domain.com
+    http:
+      paths:
+      # Internal management endpoints only
+      - path: /api/v1
+        pathType: Prefix
+        backend:
+          service:
+            name: ssf-broker-service
+            port:
+              number: 80
+      - path: /metrics
+        pathType: Exact
+        backend:
+          service:
+            name: ssf-broker-service
+            port:
+              number: 80
+      - path: /health
+        pathType: Exact
+        backend:
+          service:
+            name: ssf-broker-service
+            port:
+              number: 80

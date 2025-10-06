@@ -1,0 +1,31 @@
+# SSF Broker Service Configuration
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+  read_timeout: "30s"
+  write_timeout: "30s"
+  idle_timeout: "120s"
+
+pubsub:
+  project_id: "${GCP_PROJECT_ID}"
+  topic_prefix: "ssf-events"
+  credentials_file: "${GOOGLE_APPLICATION_CREDENTIALS}"
+  max_concurrent_handlers: 10
+  max_outstanding_messages: 1000
+  max_outstanding_bytes: 1000000000  # 1GB
+  enable_message_ordering: true
+  ack_deadline: 60                   # seconds
+  retention_duration: 168            # hours (7 days)
+
+auth:
+  jwt_secret: "${JWT_SECRET}"
+  token_expiration: 24               # hours
+  require_auth: false                # Set to true for production
+  allowed_issuers:
+    - "https://transmitter1.example.com"
+    - "https://transmitter2.example.com"
+
+logging:
+  level: "info"                      # debug, info, warn, error
+  format: "json"                     # json, text
