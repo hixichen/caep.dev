@@ -23,9 +23,7 @@ type Receiver struct {
 
 // DeliveryConfig specifies how events should be delivered to the receiver
 type DeliveryConfig struct {
-	Method      DeliveryMethod `json:"method" yaml:"method"`                             // webhook, pull, push
-	TopicName   string         `json:"topic_name,omitempty" yaml:"topic_name,omitempty"` // For pull delivery
-	Subscription string        `json:"subscription,omitempty" yaml:"subscription,omitempty"` // For pull delivery
+	Method      DeliveryMethod `json:"method" yaml:"method"`                             // webhook only (hub manages all backend delivery)
 	BatchSize   int            `json:"batch_size,omitempty" yaml:"batch_size,omitempty"`
 	Timeout     time.Duration  `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 }
@@ -75,8 +73,7 @@ type DeliveryMethod string
 
 const (
 	DeliveryMethodWebhook DeliveryMethod = "webhook"
-	DeliveryMethodPull    DeliveryMethod = "pull"
-	DeliveryMethodPush    DeliveryMethod = "push"
+	// Note: pull and push methods removed - hub manages all backend delivery internally
 )
 
 type AuthType string
@@ -131,7 +128,7 @@ func (r *Receiver) Validate() error {
 		return fmt.Errorf("at least one event type must be specified")
 	}
 
-	// Validate delivery method
+	// Validate delivery method - only webhook supported (hub manages backend delivery)
 	switch r.Delivery.Method {
 	case DeliveryMethodWebhook:
 		if r.WebhookURL == "" {
@@ -140,16 +137,8 @@ func (r *Receiver) Validate() error {
 		if _, err := url.Parse(r.WebhookURL); err != nil {
 			return fmt.Errorf("invalid webhook_url: %w", err)
 		}
-	case DeliveryMethodPull:
-		if r.Delivery.TopicName == "" {
-			return fmt.Errorf("topic_name is required for pull delivery")
-		}
-	case DeliveryMethodPush:
-		if r.Delivery.TopicName == "" {
-			return fmt.Errorf("topic_name is required for push delivery")
-		}
 	default:
-		return fmt.Errorf("invalid delivery method: %s", r.Delivery.Method)
+		return fmt.Errorf("invalid delivery method: %s (only webhook supported)", r.Delivery.Method)
 	}
 
 	// Validate auth configuration

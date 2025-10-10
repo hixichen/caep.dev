@@ -19,16 +19,24 @@ import (
 // mockPubSubClient implements broker.PubSubClient for testing
 type mockPubSubClientForHandlers struct{}
 
-func (m *mockPubSubClientForHandlers) PublishEvent(ctx context.Context, event *models.SecurityEvent) error {
+func (m *mockPubSubClientForHandlers) PublishEvent(ctx context.Context, event *models.SecurityEvent, targetReceivers []string) error {
 	return nil
 }
 
-func (m *mockPubSubClientForHandlers) CreateReceiverSubscription(ctx context.Context, receiver *models.Receiver) error {
+func (m *mockPubSubClientForHandlers) CreateHubSubscription(ctx context.Context, subscriptionName string) error {
 	return nil
 }
 
-func (m *mockPubSubClientForHandlers) DeleteReceiverSubscription(ctx context.Context, receiverID string, eventTypes []string) error {
+func (m *mockPubSubClientForHandlers) DeleteHubSubscription(ctx context.Context, subscriptionName string) error {
 	return nil
+}
+
+func (m *mockPubSubClientForHandlers) PullInternalMessages(ctx context.Context, subscriptionName string, maxMessages int, handler func(*models.InternalMessage) error) error {
+	return nil
+}
+
+func (m *mockPubSubClientForHandlers) GetHubInstanceID() string {
+	return "test-hub-instance"
 }
 
 func (m *mockPubSubClientForHandlers) Close() error {

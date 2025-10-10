@@ -14,7 +14,7 @@
 
 ## Overview
 
-The SSF Hub is a centralized hub for Shared Signals Framework (SSF) events that enables secure, real-time distribution of security events across multiple systems. It acts as both an SSF receiver (accepting events from transmitters) and an event broker (distributing events to registered receivers).
+The SSF Hub is a centralized hub for Shared Signals Framework (SSF) events that enables secure, real-time distribution of security events across multiple systems. It acts as both an SSF receiver (accepting events from transmitters) and an event hub (distributing events to registered receivers).
 
 ### Key Benefits
 
@@ -95,7 +95,7 @@ The SSF Hub is a centralized hub for Shared Signals Framework (SSF) events that 
 
 **Configuration**:
 ```yaml
-# Multiple transmitters send events to the broker
+# Multiple transmitters send events to the hub
 transmitters:
   - identity_provider: "https://idp.saas.com"
   - security_service: "https://security.saas.com"
@@ -189,7 +189,7 @@ receivers:
 
 ### 1. Centralized Hub (Recommended)
 
-**Architecture**: Single broker instance serving multiple transmitters and receivers.
+**Architecture**: Single hub instance serving multiple transmitters and receivers.
 
 ```yaml
 deployment:
@@ -210,17 +210,17 @@ deployment:
 - Single cloud region deployments
 - Centralized security operations
 
-### 2. Federated Brokers
+### 2. Federated Hubs
 
-**Architecture**: Multiple broker instances with event federation.
+**Architecture**: Multiple hub instances with event federation.
 
 ```yaml
 deployment:
   type: federated
   regions:
-    - us-east: primary broker
-    - us-west: secondary broker
-    - eu-central: regional broker
+    - us-east: primary hub
+    - us-west: secondary hub
+    - eu-central: regional hub
   benefits:
     - Geographic distribution
     - Reduced latency
@@ -238,14 +238,14 @@ deployment:
 
 ### 3. Hybrid Cloud
 
-**Architecture**: Broker deployed across multiple cloud providers or on-premises.
+**Architecture**: Hub deployed across multiple cloud providers or on-premises.
 
 ```yaml
 deployment:
   type: hybrid
   components:
     - gcp_pubsub: Google Cloud Pub/Sub backend
-    - k8s_broker: Kubernetes deployment (any cloud)
+    - k8s_hub: Kubernetes deployment (any cloud)
     - on_prem_receivers: On-premises event consumers
   benefits:
     - Cloud flexibility
@@ -272,9 +272,9 @@ deployment:
 // Example using ssfreceiver library
 import "github.com/sgnl-ai/caep.dev/ssfreceiver"
 
-// Configure transmitter to send to broker
+// Configure transmitter to send to hub
 transmitterConfig := &TransmitterConfig{
-    BrokerURL: "https://ssf-hub.company.com",
+    HubURL: "https://ssf-hub.company.com",
     Events: []string{
         "https://schemas.openid.net/secevent/caep/event-type/session-revoked",
         "https://schemas.openid.net/secevent/caep/event-type/credential-change",
@@ -286,26 +286,26 @@ transmitterConfig := &TransmitterConfig{
 }
 ```
 
-#### 2. Send Events to Broker
+#### 2. Send Events to Hub
 
 ```bash
-# Send security event to broker
+# Send security event to hub
 curl -X POST https://ssf-hub.company.com/events \
   -H "Content-Type: application/secevent+jwt" \
   -H "Authorization: Bearer transmitter-token" \
   -d "$SECURITY_EVENT_TOKEN"
 ```
 
-#### 3. Discover Broker Configuration
+#### 3. Discover Hub Configuration
 
 ```bash
-# Get broker SSF configuration
+# Get hub SSF configuration
 curl https://ssf-hub.company.com/.well-known/ssf_configuration
 ```
 
 ### For Event Receivers
 
-#### 1. Register with Broker
+#### 1. Register with Hub
 
 ```bash
 # Register as event receiver
@@ -387,10 +387,10 @@ curl -X POST https://ssf-hub.company.com/api/v1/receivers \
 
 ### For Administrators
 
-#### 1. Monitor Broker Health
+#### 1. Monitor Hub Health
 
 ```bash
-# Check broker health
+# Check hub health
 curl https://ssf-hub.company.com/health
 
 # Check readiness
@@ -768,25 +768,25 @@ data:
 
 ### Prometheus Metrics
 
-The broker exposes comprehensive metrics via `/metrics` endpoint:
+The hub exposes comprehensive metrics via `/metrics` endpoint:
 
 ```prometheus
 # Event processing metrics
-ssf_broker_events_received_total{transmitter_id="...", event_type="..."}
-ssf_broker_events_published_total{event_type="..."}
-ssf_broker_events_delivered_total{receiver_id="...", event_type="..."}
-ssf_broker_events_failed_total{receiver_id="...", reason="..."}
+ssf_hub_events_received_total{transmitter_id="...", event_type="..."}
+ssf_hub_events_published_total{event_type="..."}
+ssf_hub_events_delivered_total{receiver_id="...", event_type="..."}
+ssf_hub_events_failed_total{receiver_id="...", reason="..."}
 
 # Performance metrics
-ssf_broker_event_processing_duration_seconds{quantile="0.5"}
-ssf_broker_webhook_delivery_duration_seconds{quantile="0.95"}
-ssf_broker_pubsub_publish_duration_seconds{quantile="0.99"}
+ssf_hub_event_processing_duration_seconds{quantile="0.5"}
+ssf_hub_webhook_delivery_duration_seconds{quantile="0.95"}
+ssf_hub_pubsub_publish_duration_seconds{quantile="0.99"}
 
 # System metrics
-ssf_broker_active_receivers_total
-ssf_broker_subscriptions_total
-ssf_broker_memory_usage_bytes
-ssf_broker_cpu_usage_percent
+ssf_hub_active_receivers_total
+ssf_hub_subscriptions_total
+ssf_hub_memory_usage_bytes
+ssf_hub_cpu_usage_percent
 ```
 
 ### Grafana Dashboard Example
@@ -801,11 +801,11 @@ ssf_broker_cpu_usage_percent
         "type": "graph",
         "targets": [
           {
-            "expr": "rate(ssf_broker_events_received_total[5m])",
+            "expr": "rate(ssf_hub_events_received_total[5m])",
             "legendFormat": "Events Received/sec"
           },
           {
-            "expr": "rate(ssf_broker_events_delivered_total[5m])",
+            "expr": "rate(ssf_hub_events_delivered_total[5m])",
             "legendFormat": "Events Delivered/sec"
           }
         ]
@@ -815,7 +815,7 @@ ssf_broker_cpu_usage_percent
         "type": "stat",
         "targets": [
           {
-            "expr": "rate(ssf_broker_events_failed_total[5m]) / rate(ssf_broker_events_received_total[5m])",
+            "expr": "rate(ssf_hub_events_failed_total[5m]) / rate(ssf_hub_events_received_total[5m])",
             "legendFormat": "Error Rate %"
           }
         ]
@@ -825,7 +825,7 @@ ssf_broker_cpu_usage_percent
         "type": "table",
         "targets": [
           {
-            "expr": "ssf_broker_receiver_health_status",
+            "expr": "ssf_hub_receiver_health_status",
             "format": "table"
           }
         ]
@@ -840,7 +840,7 @@ ssf_broker_cpu_usage_percent
 #### Event Processing Failure
 
 ```bash
-# 1. Check broker health
+# 1. Check hub health
 curl https://ssf-hub.company.com/health
 
 # 2. Check recent logs
@@ -1054,4 +1054,4 @@ curl https://ssf-hub.company.com/debug/subscriptions
 curl https://ssf-hub.company.com/debug/events
 ```
 
-This completes the comprehensive usage guide for the SSF Hub service. The guide provides practical guidance for all stakeholders - from developers integrating with the broker to operators managing it in production.
+This completes the comprehensive usage guide for the SSF Hub service. The guide provides practical guidance for all stakeholders - from developers integrating with the hub to operators managing it in production.

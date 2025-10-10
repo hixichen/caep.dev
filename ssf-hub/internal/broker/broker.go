@@ -10,24 +10,31 @@ import (
 
 	"github.com/sgnl-ai/caep.dev/secevent/pkg/parser"
 	"github.com/sgnl-ai/caep.dev/secevent/pkg/token"
+	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/distributor"
+	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/hubreceiver"
 	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/registry"
 	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/pkg/models"
 )
 
-// PubSubClient interface for pub/sub operations
+// PubSubClient interface for unified hub pub/sub operations
 type PubSubClient interface {
-	PublishEvent(ctx context.Context, event *models.SecurityEvent) error
-	CreateReceiverSubscription(ctx context.Context, receiver *models.Receiver) error
-	DeleteReceiverSubscription(ctx context.Context, receiverID string, eventTypes []string) error
+	PublishEvent(ctx context.Context, event *models.SecurityEvent, targetReceivers []string) error
+	CreateHubSubscription(ctx context.Context, subscriptionName string) error
+	DeleteHubSubscription(ctx context.Context, subscriptionName string) error
+	PullInternalMessages(ctx context.Context, subscriptionName string, maxMessages int, handler func(*models.InternalMessage) error) error
+	GetHubInstanceID() string
 	Close() error
 }
 
 // Broker handles SSF event processing and distribution
 type Broker struct {
-	pubsubClient PubSubClient
-	registry     registry.Registry
-	logger       *slog.Logger
-	parser       *parser.Parser
+	pubsubClient  PubSubClient
+	registry      registry.Registry
+	logger        *slog.Logger
+	parser        *parser.Parser
+	hubReceiver   *hubreceiver.HubReceiver
+	distributor   *distributor.EventDistributor
+	hubInstanceID string
 }
 
 // New creates a new SSF broker
@@ -36,11 +43,36 @@ func New(pubsubClient PubSubClient, registry registry.Registry, logger *slog.Log
 	// In production, configure with JWKS URL and expected issuer
 	secEventParser := parser.NewParser()
 
+	// Get hub instance ID
+	hubInstanceID := pubsubClient.GetHubInstanceID()
+
+	// Create event distributor
+	distributorConfig := &distributor.Config{
+		Registry:    registry,
+		Logger:      logger,
+		HTTPTimeout: 30 * time.Second,
+	}
+	eventDistributor := distributor.NewEventDistributor(distributorConfig)
+
+	// Create hub receiver
+	hubReceiverConfig := &hubreceiver.Config{
+		HubInstanceID:    hubInstanceID,
+		PubSubClient:     pubsubClient,
+		EventDistributor: eventDistributor,
+		Logger:           logger,
+		MaxMessages:      100,
+		PullTimeout:      30 * time.Second,
+	}
+	hubRec := hubreceiver.NewHubReceiver(hubReceiverConfig)
+
 	return &Broker{
-		pubsubClient: pubsubClient,
-		registry:     registry,
-		logger:       logger,
-		parser:       secEventParser,
+		pubsubClient:  pubsubClient,
+		registry:      registry,
+		logger:        logger,
+		parser:        secEventParser,
+		hubReceiver:   hubRec,
+		distributor:   eventDistributor,
+		hubInstanceID: hubInstanceID,
 	}
 }
 
@@ -85,16 +117,19 @@ func (b *Broker) ProcessSecurityEvent(ctx context.Context, rawSET string, transm
 		"event_id", event.ID,
 		"receiver_count", len(receivers))
 
-	// Update statistics for interested receivers
-	for _, receiver := range receivers {
+	// Extract receiver IDs for the unified topic message
+	targetReceivers := make([]string, len(receivers))
+	for i, receiver := range receivers {
+		targetReceivers[i] = receiver.ID
+		// Update statistics for interested receivers
 		if err := b.registry.IncrementEventReceived(receiver.ID); err != nil {
 			b.logger.Error("Failed to update receiver stats", "receiver_id", receiver.ID, "error", err)
 		}
 	}
 
-	// Publish event to Pub/Sub for distribution
-	if err := b.pubsubClient.PublishEvent(ctx, event); err != nil {
-		return fmt.Errorf("failed to publish event to pub/sub: %w", err)
+	// Publish event to unified Pub/Sub topic for hub-managed distribution
+	if err := b.pubsubClient.PublishEvent(ctx, event, targetReceivers); err != nil {
+		return fmt.Errorf("failed to publish event to unified topic: %w", err)
 	}
 
 	b.logger.Info("Security event processed successfully",
@@ -119,15 +154,8 @@ func (b *Broker) RegisterReceiver(ctx context.Context, receiverReq *models.Recei
 		return nil, fmt.Errorf("failed to register receiver: %w", err)
 	}
 
-	// Create Pub/Sub subscriptions for the receiver
-	if err := b.pubsubClient.CreateReceiverSubscription(ctx, receiver); err != nil {
-		// Try to unregister if subscription creation fails
-		if unregErr := b.registry.Unregister(receiver.ID); unregErr != nil {
-			b.logger.Error("Failed to unregister receiver after subscription creation failure",
-				"receiver_id", receiver.ID, "error", unregErr)
-		}
-		return nil, fmt.Errorf("failed to create pub/sub subscriptions: %w", err)
-	}
+	// Note: In the new architecture, receivers only receive webhooks from the hub
+	// No direct Pub/Sub subscriptions are created for receivers
 
 	b.logger.Info("Receiver registered successfully",
 		"receiver_id", receiver.ID,
@@ -137,19 +165,16 @@ func (b *Broker) RegisterReceiver(ctx context.Context, receiverReq *models.Recei
 	return receiver, nil
 }
 
-// UnregisterReceiver removes a receiver and its subscriptions
+// UnregisterReceiver removes a receiver
 func (b *Broker) UnregisterReceiver(ctx context.Context, receiverID string) error {
-	// Get receiver details first
-	receiver, err := b.registry.Get(receiverID)
+	// Check if receiver exists
+	_, err := b.registry.Get(receiverID)
 	if err != nil {
 		return fmt.Errorf("receiver not found: %w", err)
 	}
 
-	// Delete Pub/Sub subscriptions
-	if err := b.pubsubClient.DeleteReceiverSubscription(ctx, receiverID, receiver.EventTypes); err != nil {
-		b.logger.Error("Failed to delete pub/sub subscriptions", "receiver_id", receiverID, "error", err)
-		// Continue with unregistration even if subscription deletion fails
-	}
+	// Note: In the new architecture, receivers don't have direct Pub/Sub subscriptions
+	// The hub manages all Pub/Sub operations internally
 
 	// Unregister from registry
 	if err := b.registry.Unregister(receiverID); err != nil {
@@ -182,16 +207,8 @@ func (b *Broker) UpdateReceiver(ctx context.Context, receiverReq *models.Receive
 
 	// Update Pub/Sub subscriptions if event types changed
 	if eventTypesChanged {
-		// Delete old subscriptions
-		if err := b.pubsubClient.DeleteReceiverSubscription(ctx, receiver.ID, existing.EventTypes); err != nil {
-			b.logger.Error("Failed to delete old pub/sub subscriptions", "receiver_id", receiver.ID, "error", err)
-		}
-
-		// Create new subscriptions
-		if err := b.pubsubClient.CreateReceiverSubscription(ctx, receiver); err != nil {
-			b.logger.Error("Failed to create new pub/sub subscriptions", "receiver_id", receiver.ID, "error", err)
-			return nil, fmt.Errorf("failed to update pub/sub subscriptions: %w", err)
-		}
+		// Note: In the new architecture, no direct Pub/Sub subscription management needed
+		// The hub handles all event distribution via webhooks
 	}
 
 	b.logger.Info("Receiver updated successfully",
@@ -324,4 +341,51 @@ func (b *Broker) slicesEqual(a, sliceB []string) bool {
 	}
 
 	return true
+}
+
+// Start initializes and starts the broker, including the hub receiver
+func (b *Broker) Start(ctx context.Context) error {
+	b.logger.Info("Starting SSF Hub broker", "hub_instance_id", b.hubInstanceID)
+
+	// Start the hub receiver to consume from unified topic
+	if err := b.hubReceiver.Start(ctx); err != nil {
+		return fmt.Errorf("failed to start hub receiver: %w", err)
+	}
+
+	b.logger.Info("SSF Hub broker started successfully")
+	return nil
+}
+
+// Stop gracefully stops the broker and hub receiver
+func (b *Broker) Stop(ctx context.Context) error {
+	b.logger.Info("Stopping SSF Hub broker")
+
+	// Stop the hub receiver
+	if err := b.hubReceiver.Stop(ctx); err != nil {
+		b.logger.Error("Failed to stop hub receiver", "error", err)
+		return fmt.Errorf("failed to stop hub receiver: %w", err)
+	}
+
+	b.logger.Info("SSF Hub broker stopped successfully")
+	return nil
+}
+
+// GetHubReceiver returns the hub receiver for monitoring/management
+func (b *Broker) GetHubReceiver() *hubreceiver.HubReceiver {
+	return b.hubReceiver
+}
+
+// GetDistributor returns the event distributor for monitoring/management
+func (b *Broker) GetDistributor() *distributor.EventDistributor {
+	return b.distributor
+}
+
+// GetHubInstanceID returns the hub instance ID
+func (b *Broker) GetHubInstanceID() string {
+	return b.hubInstanceID
+}
+
+// AsReceiver returns receiver information for this hub (for federation scenarios)
+func (b *Broker) AsReceiver() *models.Receiver {
+	return b.hubReceiver.AsReceiver()
 }

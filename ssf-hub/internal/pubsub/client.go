@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
 
 	"cloud.google.com/go/pubsub"
@@ -13,29 +12,37 @@ import (
 	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/pkg/models"
 )
 
-// Client wraps Google Cloud Pub/Sub client with SSF broker functionality
+// Client wraps Google Cloud Pub/Sub client with SSF hub functionality
 type Client struct {
-	client      *pubsub.Client
-	projectID   string
-	topicPrefix string
-	logger      *slog.Logger
-	topics      map[string]*pubsub.Topic
+	client        *pubsub.Client
+	projectID     string
+	unifiedTopic  *pubsub.Topic
+	topicName     string
+	logger        *slog.Logger
+	hubInstanceID string
 }
 
-// NewClient creates a new Pub/Sub client
+// NewClient creates a new Pub/Sub client with unified topic
 func NewClient(ctx context.Context, projectID string, opts ...option.ClientOption) (*Client, error) {
 	client, err := pubsub.NewClient(ctx, projectID, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pubsub client: %w", err)
 	}
 
-	return &Client{
-		client:      client,
-		projectID:   projectID,
-		topicPrefix: "ssf-events",
-		logger:      slog.Default(),
-		topics:      make(map[string]*pubsub.Topic),
-	}, nil
+	c := &Client{
+		client:        client,
+		projectID:     projectID,
+		topicName:     "ssf-hub-events", // Single unified topic
+		logger:        slog.Default(),
+		hubInstanceID: generateHubInstanceID(),
+	}
+
+	// Initialize the unified topic
+	if err := c.initUnifiedTopic(ctx); err != nil {
+		return nil, fmt.Errorf("failed to initialize unified topic: %w", err)
+	}
+
+	return c, nil
 }
 
 // SetLogger sets the logger for the client
@@ -43,281 +50,207 @@ func (c *Client) SetLogger(logger *slog.Logger) {
 	c.logger = logger
 }
 
-// SetTopicPrefix sets the prefix for topic names
-func (c *Client) SetTopicPrefix(prefix string) {
-	c.topicPrefix = prefix
+// SetTopicName sets the unified topic name
+func (c *Client) SetTopicName(name string) {
+	c.topicName = name
 }
 
 // Close closes the Pub/Sub client
 func (c *Client) Close() error {
-	// Close all topics
-	for _, topic := range c.topics {
-		topic.Stop()
+	// Stop the unified topic
+	if c.unifiedTopic != nil {
+		c.unifiedTopic.Stop()
 	}
 	return c.client.Close()
 }
 
-// PublishEvent publishes a security event to Pub/Sub
-func (c *Client) PublishEvent(ctx context.Context, event *models.SecurityEvent) error {
-	// Get or create topic for this event type
-	topicName := c.getTopicName(event.Type)
-	topic, err := c.getOrCreateTopic(ctx, topicName)
+// PublishEvent publishes a security event to the unified topic
+func (c *Client) PublishEvent(ctx context.Context, event *models.SecurityEvent, targetReceivers []string) error {
+	// Convert event to internal message format for unified topic
+	internalMsg := event.ToInternalMessage(targetReceivers, c.hubInstanceID)
+
+	// Convert internal message to Pub/Sub format
+	data, attributes, err := internalMsg.ToUnifiedPubSubMessage()
 	if err != nil {
-		return fmt.Errorf("failed to get topic %s: %w", topicName, err)
+		return fmt.Errorf("failed to convert internal message to pubsub format: %w", err)
 	}
 
-	// Convert event to Pub/Sub message
-	data, attributes, err := event.ToPubSubMessage()
-	if err != nil {
-		return fmt.Errorf("failed to convert event to pubsub message: %w", err)
-	}
-
-	// Publish the message
+	// Publish to unified topic
 	msg := &pubsub.Message{
 		Data:       data,
 		Attributes: attributes,
 	}
 
-	result := topic.Publish(ctx, msg)
+	result := c.unifiedTopic.Publish(ctx, msg)
 	messageID, err := result.Get(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to publish message: %w", err)
+		return fmt.Errorf("failed to publish message to unified topic: %w", err)
 	}
 
-	c.logger.Info("Event published to Pub/Sub",
+	c.logger.Info("Event published to unified topic",
 		"event_id", event.ID,
 		"event_type", event.Type,
-		"topic", topicName,
-		"message_id", messageID)
+		"message_id", internalMsg.MessageID,
+		"pubsub_message_id", messageID,
+		"target_receivers", len(targetReceivers),
+		"unified_topic", c.topicName)
 
 	return nil
 }
 
-// CreateReceiverSubscription creates a subscription for a receiver
-func (c *Client) CreateReceiverSubscription(ctx context.Context, receiver *models.Receiver) error {
-	for _, eventType := range receiver.EventTypes {
-		topicName := c.getTopicName(eventType)
-		subscriptionName := c.getSubscriptionName(receiver.ID, eventType)
+// CreateHubSubscription creates the hub's internal subscription to the unified topic
+// This subscription is used by the hub to receive all events and distribute them to receivers
+func (c *Client) CreateHubSubscription(ctx context.Context, subscriptionName string) error {
+	subscription := c.client.Subscription(subscriptionName)
+	exists, err := subscription.Exists(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to check hub subscription existence: %w", err)
+	}
 
-		// Get or create topic
-		topic, err := c.getOrCreateTopic(ctx, topicName)
+	if !exists {
+		cfg := pubsub.SubscriptionConfig{
+			Topic:             c.unifiedTopic,
+			AckDeadline:       60 * time.Second, // Hub processes messages quickly
+			RetentionDuration: 7 * 24 * time.Hour,
+			// No push config - hub uses pull-based processing for better control
+		}
+
+		_, err = c.client.CreateSubscription(ctx, subscriptionName, cfg)
 		if err != nil {
-			return fmt.Errorf("failed to get topic %s: %w", topicName, err)
+			return fmt.Errorf("failed to create hub subscription %s: %w", subscriptionName, err)
 		}
 
-		// Create subscription if it doesn't exist
-		subscription := c.client.Subscription(subscriptionName)
-		exists, err := subscription.Exists(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to check subscription existence: %w", err)
-		}
-
-		if !exists {
-			cfg := pubsub.SubscriptionConfig{
-				Topic:             topic,
-				AckDeadline:       time.Duration(receiver.Retry.MaxInterval),
-				RetentionDuration: 7 * 24 * time.Hour,
-				RetryPolicy: &pubsub.RetryPolicy{
-					MinimumBackoff: receiver.Retry.InitialInterval,
-					MaximumBackoff: receiver.Retry.MaxInterval,
-				},
-			}
-
-			// Configure push delivery if webhook URL is provided
-			if receiver.Delivery.Method == models.DeliveryMethodWebhook && receiver.WebhookURL != "" {
-				cfg.PushConfig = pubsub.PushConfig{
-					Endpoint: receiver.WebhookURL,
-				}
-
-				// Add authentication headers if configured
-				if receiver.Auth.Type == models.AuthTypeBearer {
-					cfg.PushConfig.AuthenticationMethod = &pubsub.OIDCToken{
-						ServiceAccountEmail: "", // Will use default service account
-					}
-				}
-			}
-
-			_, err = c.client.CreateSubscription(ctx, subscriptionName, cfg)
-			if err != nil {
-				return fmt.Errorf("failed to create subscription %s: %w", subscriptionName, err)
-			}
-
-			c.logger.Info("Created subscription for receiver",
-				"receiver_id", receiver.ID,
-				"subscription", subscriptionName,
-				"topic", topicName,
-				"delivery_method", receiver.Delivery.Method)
-		}
+		c.logger.Info("Created hub subscription for unified topic",
+			"subscription", subscriptionName,
+			"topic", c.topicName)
 	}
 
 	return nil
 }
 
-// DeleteReceiverSubscription deletes subscriptions for a receiver
-func (c *Client) DeleteReceiverSubscription(ctx context.Context, receiverID string, eventTypes []string) error {
-	for _, eventType := range eventTypes {
-		subscriptionName := c.getSubscriptionName(receiverID, eventType)
-		subscription := c.client.Subscription(subscriptionName)
+// DeleteHubSubscription deletes the hub's subscription (for cleanup)
+func (c *Client) DeleteHubSubscription(ctx context.Context, subscriptionName string) error {
+	subscription := c.client.Subscription(subscriptionName)
 
-		exists, err := subscription.Exists(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to check subscription existence: %w", err)
+	exists, err := subscription.Exists(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to check hub subscription existence: %w", err)
+	}
+
+	if exists {
+		if err := subscription.Delete(ctx); err != nil {
+			return fmt.Errorf("failed to delete hub subscription %s: %w", subscriptionName, err)
 		}
 
-		if exists {
-			if err := subscription.Delete(ctx); err != nil {
-				return fmt.Errorf("failed to delete subscription %s: %w", subscriptionName, err)
-			}
-
-			c.logger.Info("Deleted subscription for receiver",
-				"receiver_id", receiverID,
-				"subscription", subscriptionName,
-				"event_type", eventType)
-		}
+		c.logger.Info("Deleted hub subscription",
+			"subscription", subscriptionName)
 	}
 
 	return nil
 }
 
-// PullEvents pulls events from a subscription for a receiver
-func (c *Client) PullEvents(ctx context.Context, receiverID string, eventType string, maxMessages int) ([]*models.SecurityEvent, error) {
-	subscriptionName := c.getSubscriptionName(receiverID, eventType)
+// PullInternalMessages pulls internal messages from the hub's subscription
+// This is used by the hub to receive all events from the unified topic for processing
+func (c *Client) PullInternalMessages(ctx context.Context, subscriptionName string, maxMessages int, handler func(*models.InternalMessage) error) error {
 	subscription := c.client.Subscription(subscriptionName)
 
 	// Configure receive settings
 	subscription.ReceiveSettings.MaxOutstandingMessages = maxMessages
-
-	events := make([]*models.SecurityEvent, 0, maxMessages)
-	received := 0
 
 	// Create a context with timeout
 	pullCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	err := subscription.Receive(pullCtx, func(ctx context.Context, msg *pubsub.Message) {
-		if received >= maxMessages {
-			return
-		}
-
-		event, err := models.FromJSON(msg.Data)
+		// Deserialize internal message
+		internalMsg, err := models.FromInternalMessageJSON(msg.Data)
 		if err != nil {
-			c.logger.Error("Failed to deserialize event", "error", err, "message_id", msg.ID)
+			c.logger.Error("Failed to deserialize internal message", "error", err, "message_id", msg.ID)
 			msg.Nack()
 			return
 		}
 
-		events = append(events, event)
-		received++
+		// Process message through handler
+		if err := handler(internalMsg); err != nil {
+			c.logger.Error("Failed to process internal message", "error", err, "message_id", internalMsg.MessageID)
+			msg.Nack()
+			return
+		}
+
+		// Acknowledge successful processing
 		msg.Ack()
+		c.logger.Debug("Processed internal message", "message_id", internalMsg.MessageID, "event_id", internalMsg.Event.ID)
 	})
 
 	if err != nil && err != context.DeadlineExceeded {
-		return nil, fmt.Errorf("failed to receive messages: %w", err)
+		return fmt.Errorf("failed to receive internal messages: %w", err)
 	}
 
-	return events, nil
+	return nil
 }
 
-// getOrCreateTopic gets an existing topic or creates a new one
-func (c *Client) getOrCreateTopic(ctx context.Context, topicName string) (*pubsub.Topic, error) {
-	// Check if we already have this topic
-	if topic, exists := c.topics[topicName]; exists {
-		return topic, nil
-	}
-
+// initUnifiedTopic initializes the unified topic for the hub
+func (c *Client) initUnifiedTopic(ctx context.Context) error {
 	// Get topic reference
-	topic := c.client.Topic(topicName)
+	c.unifiedTopic = c.client.Topic(c.topicName)
 
 	// Check if topic exists
-	exists, err := topic.Exists(ctx)
+	exists, err := c.unifiedTopic.Exists(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check topic existence: %w", err)
+		return fmt.Errorf("failed to check unified topic existence: %w", err)
 	}
 
 	// Create topic if it doesn't exist
 	if !exists {
-		_, err = c.client.CreateTopic(ctx, topicName)
+		_, err = c.client.CreateTopic(ctx, c.topicName)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create topic: %w", err)
+			return fmt.Errorf("failed to create unified topic: %w", err)
 		}
 
-		c.logger.Info("Created Pub/Sub topic", "topic", topicName)
+		c.logger.Info("Created unified Pub/Sub topic", "topic", c.topicName)
 	}
 
-	// Cache the topic
-	c.topics[topicName] = topic
-
-	return topic, nil
+	return nil
 }
 
-// getTopicName generates a topic name for an event type
-func (c *Client) getTopicName(eventType string) string {
-	// Convert event type URI to a valid topic name
-	// e.g., "https://schemas.openid.net/secevent/caep/event-type/session-revoked"
-	// becomes "ssf-events-session-revoked"
+// generateHubInstanceID generates a unique ID for this hub instance
+func generateHubInstanceID() string {
+	return fmt.Sprintf("hub_%d_%d", time.Now().Unix(), time.Now().UnixNano()%1000000)
+}
 
-	// Extract the last part of the URI
-	parts := strings.Split(eventType, "/")
-	if len(parts) > 0 {
-		eventName := parts[len(parts)-1]
-		return fmt.Sprintf("%s-%s", c.topicPrefix, eventName)
+// GetHubInstanceID returns the hub instance ID
+func (c *Client) GetHubInstanceID() string {
+	return c.hubInstanceID
+}
+
+// GetUnifiedTopicInfo returns information about the unified topic
+func (c *Client) GetUnifiedTopicInfo(ctx context.Context) (*TopicInfo, error) {
+	exists, err := c.unifiedTopic.Exists(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check unified topic existence: %w", err)
 	}
 
-	// Fallback to a general topic
-	return fmt.Sprintf("%s-general", c.topicPrefix)
-}
-
-// getSubscriptionName generates a subscription name for a receiver and event type
-func (c *Client) getSubscriptionName(receiverID, eventType string) string {
-	// Extract event name from URI
-	parts := strings.Split(eventType, "/")
-	eventName := "general"
-	if len(parts) > 0 {
-		eventName = parts[len(parts)-1]
+	topicInfo := &TopicInfo{
+		Name:   c.topicName,
+		Exists: exists,
 	}
 
-	return fmt.Sprintf("%s-%s-%s", c.topicPrefix, receiverID, eventName)
-}
-
-// GetSubscriptionInfo returns information about subscriptions for a receiver
-func (c *Client) GetSubscriptionInfo(ctx context.Context, receiverID string, eventTypes []string) (map[string]*SubscriptionInfo, error) {
-	info := make(map[string]*SubscriptionInfo)
-
-	for _, eventType := range eventTypes {
-		subscriptionName := c.getSubscriptionName(receiverID, eventType)
-		subscription := c.client.Subscription(subscriptionName)
-
-		exists, err := subscription.Exists(ctx)
+	if exists {
+		// Get topic config
+		config, err := c.unifiedTopic.Config(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to check subscription existence: %w", err)
+			c.logger.Error("Failed to get topic config", "error", err, "topic", c.topicName)
+		} else {
+			topicInfo.Config = &config
 		}
-
-		subInfo := &SubscriptionInfo{
-			Name:      subscriptionName,
-			EventType: eventType,
-			Exists:    exists,
-		}
-
-		if exists {
-			// Get subscription config
-			config, err := subscription.Config(ctx)
-			if err != nil {
-				c.logger.Error("Failed to get subscription config", "error", err, "subscription", subscriptionName)
-			} else {
-				subInfo.Config = &config
-			}
-		}
-
-		info[eventType] = subInfo
 	}
 
-	return info, nil
+	return topicInfo, nil
 }
 
-// SubscriptionInfo contains information about a subscription
-type SubscriptionInfo struct {
-	Name      string                      `json:"name"`
-	EventType string                      `json:"event_type"`
-	Exists    bool                        `json:"exists"`
-	Config    *pubsub.SubscriptionConfig  `json:"config,omitempty"`
+// TopicInfo contains information about the unified topic
+type TopicInfo struct {
+	Name   string                 `json:"name"`
+	Exists bool                   `json:"exists"`
+	Config *pubsub.TopicConfig    `json:"config,omitempty"`
 }

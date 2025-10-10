@@ -40,6 +40,12 @@ type Registry interface {
 	// IncrementEventReceived increments the event received count for a receiver
 	IncrementEventReceived(id string) error
 
+	// IncrementEventDelivered increments the event delivered count for a receiver
+	IncrementEventDelivered(id string) error
+
+	// IncrementEventFailed increments the event failed count for a receiver
+	IncrementEventFailed(id string, errorMessage string) error
+
 	// CountByStatus returns a count of receivers by their status
 	CountByStatus() map[models.ReceiverStatus]int
 

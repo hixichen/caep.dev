@@ -2,6 +2,8 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 )
 
@@ -196,9 +198,114 @@ func (e *SecurityEvent) ToPubSubMessage() ([]byte, map[string]string, error) {
 	return data, attributes, nil
 }
 
+// InternalMessage represents the internal message schema used in the unified Pub/Sub topic
+type InternalMessage struct {
+	MessageID      string            `json:"message_id"`      // Unique message ID
+	MessageType    string            `json:"message_type"`    // Always "security_event" for events
+	Version        string            `json:"version"`         // Schema version
+	Timestamp      time.Time         `json:"timestamp"`       // Message creation time
+	Event          *SecurityEvent    `json:"event"`           // The actual security event
+	Routing        RoutingInfo       `json:"routing"`         // Routing and delivery information
+	Metadata       MessageMetadata   `json:"metadata"`        // Message metadata
+}
+
+// RoutingInfo contains information for event routing and delivery
+type RoutingInfo struct {
+	TargetReceivers []string          `json:"target_receivers"` // List of receiver IDs that should receive this event
+	EventType       string            `json:"event_type"`       // Event type for routing
+	Subject         string            `json:"subject"`          // Subject identifier for routing
+	Priority        int               `json:"priority"`         // Message priority (0=normal, 1=high, 2=urgent)
+	TTL             time.Duration     `json:"ttl"`              // Time-to-live for the message
+	Tags            map[string]string `json:"tags"`             // Custom routing tags
+}
+
+// MessageMetadata contains metadata about the internal message
+type MessageMetadata struct {
+	HubInstanceID   string            `json:"hub_instance_id"`  // ID of the hub instance that created this message
+	ProcessingID    string            `json:"processing_id"`    // Links to the original event processing
+	RetryCount      int               `json:"retry_count"`      // Number of retries for this message
+	OriginalTopic   string            `json:"original_topic"`   // For migration/debugging (can be removed later)
+	CreatedAt       time.Time         `json:"created_at"`       // When this internal message was created
+	UpdatedAt       time.Time         `json:"updated_at"`       // Last update time
+}
+
+// ToInternalMessage converts a SecurityEvent to an InternalMessage for the unified topic
+func (e *SecurityEvent) ToInternalMessage(targetReceivers []string, hubInstanceID string) *InternalMessage {
+	return &InternalMessage{
+		MessageID:   generateMessageID(),
+		MessageType: "security_event",
+		Version:     "1.0",
+		Timestamp:   time.Now(),
+		Event:       e,
+		Routing: RoutingInfo{
+			TargetReceivers: targetReceivers,
+			EventType:       e.Type,
+			Subject:         e.Subject.Identifier,
+			Priority:        0, // Default normal priority
+			TTL:             24 * time.Hour, // Default 24 hour TTL
+			Tags:            make(map[string]string),
+		},
+		Metadata: MessageMetadata{
+			HubInstanceID: hubInstanceID,
+			ProcessingID:  e.Metadata.ProcessingID,
+			RetryCount:    0,
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
+		},
+	}
+}
+
+// ToUnifiedPubSubMessage converts InternalMessage to Pub/Sub format for the unified topic
+func (m *InternalMessage) ToUnifiedPubSubMessage() ([]byte, map[string]string, error) {
+	data, err := json.Marshal(m)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	attributes := map[string]string{
+		"message_id":      m.MessageID,
+		"message_type":    m.MessageType,
+		"version":         m.Version,
+		"event_id":        m.Event.ID,
+		"event_type":      m.Event.Type,
+		"source":          m.Event.Source,
+		"subject_format":  m.Event.Subject.Format,
+		"transmitter_id":  m.Event.Metadata.TransmitterID,
+		"processing_id":   m.Event.Metadata.ProcessingID,
+		"hub_instance_id": m.Metadata.HubInstanceID,
+		"priority":        string(rune(m.Routing.Priority + '0')), // Convert int to string
+		"retry_count":     string(rune(m.Metadata.RetryCount + '0')),
+	}
+
+	// Add target receivers as a comma-separated attribute for filtering
+	if len(m.Routing.TargetReceivers) > 0 {
+		attributes["target_receivers"] = strings.Join(m.Routing.TargetReceivers, ",")
+	}
+
+	return data, attributes, nil
+}
+
+// generateMessageID generates a unique message ID
+func generateMessageID() string {
+	return "msg_" + time.Now().Format("20060102150405") + "_" + generateShortID()
+}
+
+// generateShortID generates a short unique ID
+func generateShortID() string {
+	// Simple implementation - could use UUID library for better uniqueness
+	return fmt.Sprintf("%d", time.Now().UnixNano()%1000000)
+}
+
 // FromJSON deserializes an event from JSON
 func FromJSON(data []byte) (*SecurityEvent, error) {
 	var event SecurityEvent
 	err := json.Unmarshal(data, &event)
 	return &event, err
+}
+
+// FromInternalMessageJSON deserializes an InternalMessage from JSON
+func FromInternalMessageJSON(data []byte) (*InternalMessage, error) {
+	var message InternalMessage
+	err := json.Unmarshal(data, &message)
+	return &message, err
 }

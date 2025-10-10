@@ -15,12 +15,35 @@ The SSF Hub Service provides:
 ## Architecture
 
 ```
-[SSF Transmitter A] ──┐
-[SSF Transmitter B] ──┤ HTTP ──► [SSF Hub Service] ──► [Pub/Sub Topics] ──► [Registered Receivers]
-[SSF Transmitter C] ──┘              |                                        ├─► HTTP Webhooks
-                                      |                                        ├─► Pull Subscriptions
-                                      ▼                                        └─► Custom Integrations
-                              [Registration API]
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           SSF Hub Service Architecture                          │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  [SSF Transmitters] ──HTTP──► [Event Processor] ──► [Unified Topic]            │
+│                                      │                    │                    │
+│                                      ▼                    ▼                    │
+│                              [Registration API]  [Hub Receiver] ──────┐        │
+│                                                          │             │        │
+│                                                          ▼             ▼        │
+│                                                   [Event Distributor]  │        │
+│                                                          │             │        │
+│                                                          ▼             │        │
+│  [External Receivers] ◄──HTTP Webhooks──── [Delivery Service]         │        │
+│  • SIEM Systems                                                        │        │
+│  • Auth Services                                                       │        │
+│  • Analytics                                                           │        │
+│                                                                         │        │
+│  [Advanced Integrations] ◄──Direct Pub/Sub──────────────────────────────┘        │
+│  • Custom Receivers                                                             │
+│  • Federated Hubs                                                               │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+Key Components:
+• Event Processor: Receives events from transmitters, validates, and routes
+• Unified Topic: Single Pub/Sub topic with structured internal messages
+• Hub Receiver: Hub acts as receiver to consume from its own topic
+• Event Distributor: Delivers events to external receivers via webhooks
+• Registration API: Manages receiver registration and configuration
 ```
 
 ## Features
@@ -33,15 +56,19 @@ The SSF Hub Service provides:
 
 ### Event Brokering
 - Centralized event ingestion from multiple transmitters
+- Single unified topic with structured internal message schema
+- Hub-as-receiver pattern for consistent event processing
 - Event filtering and routing based on receiver preferences
 - Dead letter handling for failed deliveries
 - Event transformation and enrichment
 
 ### Receiver Management
 - REST API for receiver registration and management
-- Support for webhook and pull-based delivery
+- Hub-managed webhook delivery (recommended)
+- Direct Pub/Sub access for advanced integrations
 - Event type subscriptions and filtering
 - Authentication and authorization for receivers
+- Hub federation support for multi-region deployments
 
 ### Operational Excellence
 - Health and readiness endpoints
@@ -411,6 +438,50 @@ go test ./...
 # Run integration tests (requires GCP setup)
 go test -tags=integration ./...
 ```
+
+## Documentation
+
+### Getting Started
+- **[Quick Start - Receiver Integration](docs/QUICK_START_RECEIVER.md)** - Get your service receiving SSF events in 5 minutes
+- **[Usage Guide](docs/USAGE_GUIDE.md)** - Comprehensive usage examples and patterns
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions
+
+### Integration Guides
+- **[Receiver Integration Guide](docs/RECEIVER_INTEGRATION.md)** - Complete guide for implementing receivers
+- **[API Reference](docs/API_REFERENCE.md)** - REST API documentation
+
+### Operations
+- **[Quick Reference](docs/QUICK_REFERENCE.md)** - Common commands and configurations
+- **[Monitoring](docs/MONITORING.md)** - Metrics, alerts, and observability
+
+## Key Features Summary
+
+### 🏗️ Hub-as-Receiver Architecture
+- SSF Hub itself follows the receiver model for consistency
+- Single unified Pub/Sub topic with structured internal messages
+- Hub subscribes to its own topic for event distribution
+
+### 🔌 Multiple Integration Patterns
+1. **Hub-Managed Webhooks** (Recommended)
+   - Register via REST API
+   - Hub delivers events via HTTP POST
+   - Built-in retry logic and monitoring
+
+2. **Direct Pub/Sub Access** (Advanced)
+   - Subscribe directly to unified topic
+   - Full control over message processing
+   - Custom filtering and routing
+
+3. **Hub Federation**
+   - Multi-region hub deployments
+   - Cross-hub event sharing
+   - Disaster recovery scenarios
+
+### 📊 Operational Excellence
+- Comprehensive metrics and monitoring
+- Health checks and readiness probes
+- Kubernetes-native deployment
+- Production-ready configurations
 
 ## Contributing
 

@@ -11,33 +11,44 @@ import (
 
 // mockPubSubClient is a mock implementation of broker.PubSubClient for testing
 type mockPubSubClient struct {
-	publishedEvents []*models.SecurityEvent
-	createSubsCalls []createSubsCall
-	deleteSubsCalls []deleteSubsCall
+	publishedEvents   []*models.SecurityEvent
+	targetReceivers   [][]string
+	hubSubscriptions  []string
+	hubInstanceID     string
 }
 
-type createSubsCall struct {
-	receiver *models.Receiver
-}
-
-type deleteSubsCall struct {
-	receiverID string
-	eventTypes []string
-}
-
-func (m *mockPubSubClient) PublishEvent(ctx context.Context, event *models.SecurityEvent) error {
+func (m *mockPubSubClient) PublishEvent(ctx context.Context, event *models.SecurityEvent, targetReceivers []string) error {
 	m.publishedEvents = append(m.publishedEvents, event)
+	m.targetReceivers = append(m.targetReceivers, targetReceivers)
 	return nil
 }
 
-func (m *mockPubSubClient) CreateReceiverSubscription(ctx context.Context, receiver *models.Receiver) error {
-	m.createSubsCalls = append(m.createSubsCalls, createSubsCall{receiver: receiver})
+func (m *mockPubSubClient) CreateHubSubscription(ctx context.Context, subscriptionName string) error {
+	m.hubSubscriptions = append(m.hubSubscriptions, subscriptionName)
 	return nil
 }
 
-func (m *mockPubSubClient) DeleteReceiverSubscription(ctx context.Context, receiverID string, eventTypes []string) error {
-	m.deleteSubsCalls = append(m.deleteSubsCalls, deleteSubsCall{receiverID: receiverID, eventTypes: eventTypes})
+func (m *mockPubSubClient) DeleteHubSubscription(ctx context.Context, subscriptionName string) error {
+	// Remove from hubSubscriptions if present
+	for i, sub := range m.hubSubscriptions {
+		if sub == subscriptionName {
+			m.hubSubscriptions = append(m.hubSubscriptions[:i], m.hubSubscriptions[i+1:]...)
+			break
+		}
+	}
 	return nil
+}
+
+func (m *mockPubSubClient) PullInternalMessages(ctx context.Context, subscriptionName string, maxMessages int, handler func(*models.InternalMessage) error) error {
+	// Mock implementation - no messages to pull in tests
+	return nil
+}
+
+func (m *mockPubSubClient) GetHubInstanceID() string {
+	if m.hubInstanceID == "" {
+		m.hubInstanceID = "test-hub-instance"
+	}
+	return m.hubInstanceID
 }
 
 func (m *mockPubSubClient) Close() error {
@@ -54,7 +65,7 @@ func createTestBroker() (*Broker, *mockPubSubClient, registry.Registry) {
 }
 
 func TestBroker_RegisterReceiver(t *testing.T) {
-	broker, mockClient, _ := createTestBroker()
+	broker, _, _ := createTestBroker()
 
 	receiverReq := &models.ReceiverRequest{
 		ID:          "test-receiver",
@@ -85,14 +96,9 @@ func TestBroker_RegisterReceiver(t *testing.T) {
 		t.Errorf("RegisterReceiver() receiver status = %s, want %s", receiver.Status, models.ReceiverStatusActive)
 	}
 
-	// Check that subscription was created
-	if len(mockClient.createSubsCalls) != 1 {
-		t.Errorf("RegisterReceiver() expected 1 CreateReceiverSubscription call, got %d", len(mockClient.createSubsCalls))
-	}
-
-	if mockClient.createSubsCalls[0].receiver.ID != receiverReq.ID {
-		t.Errorf("RegisterReceiver() subscription created for wrong receiver ID")
-	}
+	// In the new architecture, receivers don't create direct subscriptions
+	// They only get registered for webhook delivery
+	// The hub manages all Pub/Sub operations internally
 }
 
 func TestBroker_RegisterReceiver_Invalid(t *testing.T) {
@@ -115,7 +121,7 @@ func TestBroker_RegisterReceiver_Invalid(t *testing.T) {
 }
 
 func TestBroker_UnregisterReceiver(t *testing.T) {
-	broker, mockClient, registry := createTestBroker()
+	broker, _, registry := createTestBroker()
 
 	// First register a receiver
 	receiver := &models.Receiver{
@@ -143,19 +149,8 @@ func TestBroker_UnregisterReceiver(t *testing.T) {
 		t.Error("UnregisterReceiver() receiver should be removed from registry")
 	}
 
-	// Check that subscription was deleted
-	if len(mockClient.deleteSubsCalls) != 1 {
-		t.Errorf("UnregisterReceiver() expected 1 DeleteReceiverSubscription call, got %d", len(mockClient.deleteSubsCalls))
-	}
-
-	deleteCall := mockClient.deleteSubsCalls[0]
-	if deleteCall.receiverID != "test-receiver" {
-		t.Errorf("UnregisterReceiver() subscription deleted for wrong receiver ID")
-	}
-
-	if len(deleteCall.eventTypes) != 2 {
-		t.Errorf("UnregisterReceiver() expected 2 event types for deletion, got %d", len(deleteCall.eventTypes))
-	}
+	// In the new architecture, no direct subscriptions are deleted
+	// The hub manages all Pub/Sub operations internally
 }
 
 func TestBroker_UnregisterReceiver_NotFound(t *testing.T) {
@@ -169,7 +164,7 @@ func TestBroker_UnregisterReceiver_NotFound(t *testing.T) {
 }
 
 func TestBroker_UpdateReceiver(t *testing.T) {
-	broker, mockClient, registry := createTestBroker()
+	broker, _, registry := createTestBroker()
 
 	// First register a receiver
 	originalReceiver := &models.Receiver{
@@ -212,17 +207,12 @@ func TestBroker_UpdateReceiver(t *testing.T) {
 	}
 
 	// Check that subscriptions were updated (deleted old, created new)
-	if len(mockClient.deleteSubsCalls) != 1 {
-		t.Errorf("UpdateReceiver() expected 1 DeleteReceiverSubscription call, got %d", len(mockClient.deleteSubsCalls))
-	}
-
-	if len(mockClient.createSubsCalls) != 1 {
-		t.Errorf("UpdateReceiver() expected 1 CreateReceiverSubscription call, got %d", len(mockClient.createSubsCalls))
-	}
+	// In the new architecture, no direct subscription management for receivers
+	// Event routing is handled internally by the hub
 }
 
 func TestBroker_UpdateReceiver_SameEventTypes(t *testing.T) {
-	broker, mockClient, registry := createTestBroker()
+	broker, _, registry := createTestBroker()
 
 	// First register a receiver
 	originalReceiver := &models.Receiver{
@@ -256,13 +246,8 @@ func TestBroker_UpdateReceiver_SameEventTypes(t *testing.T) {
 	}
 
 	// Check that subscriptions were NOT updated (no delete/create calls)
-	if len(mockClient.deleteSubsCalls) != 0 {
-		t.Errorf("UpdateReceiver() expected 0 DeleteReceiverSubscription calls for same event types, got %d", len(mockClient.deleteSubsCalls))
-	}
-
-	if len(mockClient.createSubsCalls) != 0 {
-		t.Errorf("UpdateReceiver() expected 0 CreateReceiverSubscription calls for same event types, got %d", len(mockClient.createSubsCalls))
-	}
+	// In the new architecture, no subscription management for unchanged event types
+	// Event routing is handled internally by the hub
 }
 
 func TestBroker_GetBrokerStats(t *testing.T) {

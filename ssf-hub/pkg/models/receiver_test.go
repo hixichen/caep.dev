@@ -80,28 +80,16 @@ func TestReceiver_Validate(t *testing.T) {
 			errMsg:  "invalid webhook_url",
 		},
 		{
-			name: "pull delivery without topic",
+			name: "invalid delivery method - pull not supported",
 			receiver: &Receiver{
 				ID:         "test-receiver",
 				EventTypes: []string{EventTypeSessionRevoked},
 				Delivery: DeliveryConfig{
-					Method: DeliveryMethodPull,
+					Method: "pull", // Using string literal since pull method is no longer supported
 				},
 			},
 			wantErr: true,
-			errMsg:  "topic_name is required for pull delivery",
-		},
-		{
-			name: "valid pull receiver",
-			receiver: &Receiver{
-				ID:         "test-receiver",
-				EventTypes: []string{EventTypeSessionRevoked},
-				Delivery: DeliveryConfig{
-					Method:    DeliveryMethodPull,
-					TopicName: "test-topic",
-				},
-			},
-			wantErr: false,
+			errMsg:  "invalid delivery method: pull (only webhook supported)",
 		},
 	}
 

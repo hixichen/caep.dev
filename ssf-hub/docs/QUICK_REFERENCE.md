@@ -26,7 +26,7 @@ DELETE /api/v1/receivers/{id}         # Unregister receiver
 
 ## Quick Setup
 
-### 1. Start the Broker
+### 1. Start the Hub
 ```bash
 export GCP_PROJECT_ID="your-project"
 export PUBSUB_TOPIC_PREFIX="ssf-events"
@@ -246,23 +246,23 @@ Memory Issues         → Check max_outstanding_messages setting
 ### Prometheus Queries
 ```promql
 # Event throughput
-rate(ssf_broker_events_received_total[5m])
+rate(ssf_hub_events_received_total[5m])
 
 # Error rate
-rate(ssf_broker_events_failed_total[5m]) / rate(ssf_broker_events_received_total[5m])
+rate(ssf_hub_events_failed_total[5m]) / rate(ssf_hub_events_received_total[5m])
 
 # Processing latency
-histogram_quantile(0.95, ssf_broker_event_processing_duration_seconds)
+histogram_quantile(0.95, ssf_hub_event_processing_duration_seconds)
 
 # Active receivers
-ssf_broker_active_receivers_total
+ssf_hub_active_receivers_total
 ```
 
 ### Log Queries (if using structured logging)
 ```json
 {
   "level": "ERROR",
-  "component": "broker"
+  "component": "hub"
 }
 
 {

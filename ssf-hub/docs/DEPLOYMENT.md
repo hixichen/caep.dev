@@ -46,7 +46,7 @@ gcloud config set project $PROJECT_ID
 gcloud services enable pubsub.googleapis.com
 gcloud services enable container.googleapis.com
 
-# Create service account for the broker
+# Create service account for the hub
 gcloud iam service-accounts create ssf-hub \
     --display-name="SSF Hub Service Account"
 
@@ -106,7 +106,7 @@ kubectl apply -f deployments/kubernetes/ingress.yaml
 
 ### Pub/Sub Configuration
 
-The broker automatically creates Pub/Sub topics based on event types:
+The hub automatically creates Pub/Sub topics based on event types:
 - Session revoked events → `ssf-events-session-revoked`
 - Credential change events → `ssf-events-credential-change`
 - etc.
@@ -115,7 +115,7 @@ The broker automatically creates Pub/Sub topics based on event types:
 
 ### 1. SSF Transmitter Configuration
 
-Configure your SSF transmitters to send events to the broker:
+Configure your SSF transmitters to send events to the hub:
 
 ```yaml
 # transmitter-config.yaml
@@ -160,7 +160,7 @@ curl -X POST https://ssf-hub.your-domain.com/api/v1/receivers \
   }'
 ```
 
-### 3. Discover Broker Capabilities
+### 3. Discover Hub Capabilities
 
 ```bash
 # Get SSF configuration
@@ -176,9 +176,9 @@ curl https://ssf-hub.your-domain.com/metrics
 ## Event Flow
 
 1. **Transmitter sends event** → `POST /events`
-2. **Broker validates and processes** the Security Event Token (SET)
-3. **Broker identifies interested receivers** based on event type and filters
-4. **Broker publishes to Pub/Sub topics** for distribution
+2. **Hub validates and processes** the Security Event Token (SET)
+3. **Hub identifies interested receivers** based on event type and filters
+4. **Hub publishes to Pub/Sub topics** for distribution
 5. **Receivers get events** via webhooks or Pub/Sub subscriptions
 
 ## Monitoring
@@ -193,13 +193,13 @@ curl https://ssf-hub.your-domain.com/metrics
 
 ```
 # Total receivers
-ssf_broker_receivers_total
+ssf_hub_receivers_total
 
 # Receivers by status
-ssf_broker_receivers_by_status{status="active"}
+ssf_hub_receivers_by_status{status="active"}
 
 # Event type subscribers
-ssf_broker_event_type_subscribers{event_type="session-revoked"}
+ssf_hub_event_type_subscribers{event_type="session-revoked"}
 ```
 
 ### Logging
@@ -329,7 +329,7 @@ If migrating from individual SSF receiver implementations:
 
 1. **Deploy SSF Hub** using this guide
 2. **Register your services** as receivers via the API
-3. **Update transmitters** to send to the broker instead of individual services
+3. **Update transmitters** to send to the hub instead of individual services
 4. **Verify event flow** using monitoring and logs
 5. **Decommission old receivers** once verified
 
