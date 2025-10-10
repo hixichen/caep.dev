@@ -37,25 +37,48 @@ func New(config *Config) *Handlers {
 
 // HandleEvents handles incoming security events (SSF standard endpoint)
 func (h *Handlers) HandleEvents(w http.ResponseWriter, r *http.Request) {
+	h.logger.Debug("Received SSF event request",
+		"method", r.Method,
+		"path", r.URL.Path,
+		"remote_addr", r.RemoteAddr,
+		"user_agent", r.Header.Get("User-Agent"),
+		"content_type", r.Header.Get("Content-Type"))
+
 	// Get transmitter ID from request (could be from headers, JWT claims, etc.)
 	transmitterID := h.getTransmitterID(r)
+	h.logger.Debug("Extracted transmitter ID", "transmitter_id", transmitterID)
+
 	if transmitterID == "" {
-		h.logger.Error("No transmitter ID found in request")
+		h.logger.Error("No transmitter ID found in request",
+			"headers", map[string]string{
+				"X-Transmitter-ID": r.Header.Get("X-Transmitter-ID"),
+				"Authorization": r.Header.Get("Authorization"),
+			},
+			"query_params", r.URL.Query())
 		h.writeErrorResponse(w, http.StatusBadRequest, "Missing transmitter identification")
 		return
 	}
 
 	// Read the SET from request body
+	h.logger.Debug("Reading request body")
 	rawSET, err := io.ReadAll(r.Body)
 	if err != nil {
-		h.logger.Error("Failed to read request body", "error", err)
+		h.logger.Error("Failed to read request body",
+			"error", err,
+			"transmitter_id", transmitterID)
 		h.writeErrorResponse(w, http.StatusBadRequest, "Failed to read request body")
 		return
 	}
 	defer r.Body.Close()
 
+	h.logger.Debug("Request body read successfully",
+		"body_length", len(rawSET),
+		"transmitter_id", transmitterID)
+
 	if len(rawSET) == 0 {
-		h.logger.Error("Empty request body")
+		h.logger.Error("Empty request body",
+			"transmitter_id", transmitterID,
+			"content_length_header", r.Header.Get("Content-Length"))
 		h.writeErrorResponse(w, http.StatusBadRequest, "Empty request body")
 		return
 	}
@@ -66,13 +89,21 @@ func (h *Handlers) HandleEvents(w http.ResponseWriter, r *http.Request) {
 		"content_type", r.Header.Get("Content-Type"))
 
 	// Process the security event
+	h.logger.Debug("Delegating to controller for processing",
+		"transmitter_id", transmitterID,
+		"body_length", len(rawSET))
+
 	if err := h.controller.ProcessSecurityEvent(r.Context(), string(rawSET), transmitterID); err != nil {
 		h.logger.Error("Failed to process security event",
 			"transmitter_id", transmitterID,
-			"error", err)
+			"error", err,
+			"body_length", len(rawSET))
 		h.writeErrorResponse(w, http.StatusInternalServerError, "Failed to process security event")
 		return
 	}
+
+	h.logger.Debug("Security event processed successfully by controller",
+		"transmitter_id", transmitterID)
 
 	// Return success response
 	response := map[string]interface{}{
@@ -81,7 +112,15 @@ func (h *Handlers) HandleEvents(w http.ResponseWriter, r *http.Request) {
 		"timestamp":      fmt.Sprintf("%d", r.Context().Value("timestamp")),
 	}
 
+	h.logger.Debug("Sending success response",
+		"transmitter_id", transmitterID,
+		"response_status", "accepted")
+
 	h.writeJSONResponse(w, http.StatusAccepted, response)
+
+	h.logger.Debug("HandleEvents completed successfully",
+		"transmitter_id", transmitterID,
+		"response_code", http.StatusAccepted)
 }
 
 // HandleSSFConfiguration handles SSF metadata discovery (SSF standard endpoint)
@@ -163,23 +202,46 @@ func (h *Handlers) HandleMetrics(w http.ResponseWriter, r *http.Request) {
 
 // HandleRegisterReceiver handles receiver registration requests
 func (h *Handlers) HandleRegisterReceiver(w http.ResponseWriter, r *http.Request) {
+	h.logger.Debug("Received receiver registration request",
+		"method", r.Method,
+		"remote_addr", r.RemoteAddr,
+		"content_type", r.Header.Get("Content-Type"))
+
 	var receiverReq models.ReceiverRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&receiverReq); err != nil {
-		h.logger.Error("Failed to decode receiver request", "error", err)
+		h.logger.Error("Failed to decode receiver request",
+			"error", err,
+			"content_type", r.Header.Get("Content-Type"),
+			"remote_addr", r.RemoteAddr)
 		h.writeErrorResponse(w, http.StatusBadRequest, "Invalid JSON payload")
 		return
 	}
 
+	h.logger.Debug("Receiver request decoded successfully",
+		"receiver_id", receiverReq.ID,
+		"name", receiverReq.Name,
+		"event_types", receiverReq.EventTypes,
+		"delivery_method", receiverReq.Delivery.Method)
+
 	// Register the receiver
+	h.logger.Debug("Delegating to controller for receiver registration",
+		"receiver_id", receiverReq.ID)
+
 	receiver, err := h.controller.RegisterReceiver(r.Context(), &receiverReq)
 	if err != nil {
 		h.logger.Error("Failed to register receiver",
 			"receiver_id", receiverReq.ID,
-			"error", err)
+			"error", err,
+			"webhook_url", receiverReq.WebhookURL,
+			"event_types", receiverReq.EventTypes)
 		h.writeErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("Failed to register receiver: %v", err))
 		return
 	}
+
+	h.logger.Debug("Receiver registered successfully by controller",
+		"receiver_id", receiver.ID,
+		"created_at", receiver.Metadata.CreatedAt)
 
 	h.logger.Info("Receiver registered via API",
 		"receiver_id", receiver.ID,
@@ -190,18 +252,37 @@ func (h *Handlers) HandleRegisterReceiver(w http.ResponseWriter, r *http.Request
 
 // HandleListReceivers handles listing all receivers
 func (h *Handlers) HandleListReceivers(w http.ResponseWriter, r *http.Request) {
+	h.logger.Debug("Received list receivers request",
+		"method", r.Method,
+		"query_params", r.URL.Query(),
+		"remote_addr", r.RemoteAddr)
+
 	receivers, err := h.controller.ListReceivers()
 	if err != nil {
-		h.logger.Error("Failed to list receivers", "error", err)
+		h.logger.Error("Failed to list receivers",
+			"error", err,
+			"remote_addr", r.RemoteAddr)
 		h.writeErrorResponse(w, http.StatusInternalServerError, "Failed to list receivers")
 		return
 	}
+
+	h.logger.Debug("Retrieved receivers from controller",
+		"receiver_count", len(receivers))
 
 	// Apply query filters if provided
 	statusFilter := r.URL.Query().Get("status")
 	eventTypeFilter := r.URL.Query().Get("event_type")
 
+	h.logger.Debug("Applying filters to receiver list",
+		"status_filter", statusFilter,
+		"event_type_filter", eventTypeFilter,
+		"total_receivers", len(receivers))
+
 	filteredReceivers := h.filterReceivers(receivers, statusFilter, eventTypeFilter)
+
+	h.logger.Debug("Filtering completed",
+		"filtered_count", len(filteredReceivers),
+		"original_count", len(receivers))
 
 	response := map[string]interface{}{
 		"receivers": filteredReceivers,
@@ -218,17 +299,33 @@ func (h *Handlers) HandleListReceivers(w http.ResponseWriter, r *http.Request) {
 // HandleGetReceiver handles getting a specific receiver
 func (h *Handlers) HandleGetReceiver(w http.ResponseWriter, r *http.Request) {
 	receiverID := r.PathValue("id")
+	h.logger.Debug("Received get receiver request",
+		"receiver_id", receiverID,
+		"query_params", r.URL.Query(),
+		"remote_addr", r.RemoteAddr)
+
 	if receiverID == "" {
+		h.logger.Error("Missing receiver ID in path",
+			"path", r.URL.Path,
+			"remote_addr", r.RemoteAddr)
 		h.writeErrorResponse(w, http.StatusBadRequest, "Missing receiver ID")
 		return
 	}
 
 	receiver, err := h.controller.GetReceiver(receiverID)
 	if err != nil {
-		h.logger.Error("Failed to get receiver", "receiver_id", receiverID, "error", err)
+		h.logger.Error("Failed to get receiver",
+			"receiver_id", receiverID,
+			"error", err,
+			"remote_addr", r.RemoteAddr)
 		h.writeErrorResponse(w, http.StatusNotFound, "Receiver not found")
 		return
 	}
+
+	h.logger.Debug("Retrieved receiver successfully",
+		"receiver_id", receiverID,
+		"status", receiver.Status,
+		"event_types", receiver.EventTypes)
 
 	// Include subscription information if requested
 	includeSubscriptions := r.URL.Query().Get("include_subscriptions") == "true"
@@ -284,7 +381,15 @@ func (h *Handlers) HandleUpdateReceiver(w http.ResponseWriter, r *http.Request) 
 // HandleUnregisterReceiver handles unregistering a receiver
 func (h *Handlers) HandleUnregisterReceiver(w http.ResponseWriter, r *http.Request) {
 	receiverID := r.PathValue("id")
+	h.logger.Debug("Received unregister receiver request",
+		"receiver_id", receiverID,
+		"method", r.Method,
+		"remote_addr", r.RemoteAddr)
+
 	if receiverID == "" {
+		h.logger.Error("Missing receiver ID in unregister request",
+			"path", r.URL.Path,
+			"remote_addr", r.RemoteAddr)
 		h.writeErrorResponse(w, http.StatusBadRequest, "Missing receiver ID")
 		return
 	}
@@ -292,10 +397,14 @@ func (h *Handlers) HandleUnregisterReceiver(w http.ResponseWriter, r *http.Reque
 	if err := h.controller.UnregisterReceiver(r.Context(), receiverID); err != nil {
 		h.logger.Error("Failed to unregister receiver",
 			"receiver_id", receiverID,
-			"error", err)
+			"error", err,
+			"remote_addr", r.RemoteAddr)
 		h.writeErrorResponse(w, http.StatusNotFound, "Receiver not found")
 		return
 	}
+
+	h.logger.Debug("Receiver unregistered successfully",
+		"receiver_id", receiverID)
 
 	h.logger.Info("Receiver unregistered via API", "receiver_id", receiverID)
 
