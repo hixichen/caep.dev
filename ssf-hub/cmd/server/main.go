@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/broker"
+	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/controller"
 	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/handlers"
 	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/pubsub"
 	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/registry"
@@ -31,7 +31,7 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	logger.Info("Starting SSF Broker Service", "version", "v1.0.0", "port", config.Server.Port)
+	logger.Info("Starting SSF Hub Service", "version", "v1.0.0", "port", config.Server.Port)
 
 	// Initialize Pub/Sub client
 	pubsubClient, err := pubsub.NewClient(context.Background(), config.PubSub.ProjectID)
@@ -43,13 +43,13 @@ func main() {
 	// Initialize receiver registry
 	receiverRegistry := registry.NewMemoryRegistry() // TODO: Replace with persistent storage
 
-	// Initialize broker
-	ssfBroker := broker.New(pubsubClient, receiverRegistry, logger)
+	// Initialize controller
+	ssfController := controller.New(pubsubClient, receiverRegistry, logger)
 
 	// Initialize handlers
 	handlerConfig := &handlers.Config{
 		Logger:   logger,
-		Broker:   ssfBroker,
+		Controller: ssfController,
 		Registry: receiverRegistry,
 	}
 
@@ -97,7 +97,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	logger.Info("Shutting down SSF Broker Service...")
+	logger.Info("Shutting down SSF Hub Service...")
 
 	// Create shutdown context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -108,7 +108,7 @@ func main() {
 		logger.Error("Server forced to shutdown", "error", err)
 	}
 
-	logger.Info("SSF Broker Service stopped")
+	logger.Info("SSF Hub Service stopped")
 }
 
 // loadConfig loads configuration from environment variables and files

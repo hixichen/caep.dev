@@ -1,6 +1,6 @@
 # SSF Hub Service
 
-A centralized SSF (Shared Signals Framework) broker service that acts as an event distribution hub using Google Cloud Pub/Sub as the backend.
+A centralized SSF (Shared Signals Framework) hub service that acts as an event distribution hub using Google Cloud Pub/Sub as the backend.
 
 ## Overview
 
@@ -89,7 +89,7 @@ Key Components:
 
 ```bash
 # Clone and navigate to the service
-cd ssf-broker
+cd ssf-hub
 
 # Install dependencies
 go mod tidy
@@ -108,12 +108,12 @@ go run cmd/server/main.go
 1. **Register as SSF Receiver with Transmitters**:
    ```bash
    # Configure transmitters to send to:
-   # https://your-ssf-broker.com/events
+   # https://your-ssf-hub.com/events
    ```
 
 2. **Register Receivers for Event Distribution**:
    ```bash
-   curl -X POST https://your-ssf-broker.com/api/v1/receivers \
+   curl -X POST https://your-ssf-hub.com/api/v1/receivers \
      -H "Content-Type: application/json" \
      -d '{
        "id": "my-service",
@@ -124,8 +124,8 @@ go run cmd/server/main.go
    ```
 
 3. **Events Flow Automatically**:
-   - Transmitters send events to broker
-   - Broker validates and processes events
+   - Transmitters send events to hub
+   - Hub validates and processes events
    - Events distributed to registered receivers via Pub/Sub
 
 ## API Documentation
@@ -182,11 +182,11 @@ Create a service account with appropriate Pub/Sub permissions:
 
 ```bash
 # Create service account for SSF Hub
-gcloud iam service-accounts create ssf-broker \
+gcloud iam service-accounts create ssf-hub \
     --display-name="SSF Hub Service Account" \
     --description="Service account for SSF Hub Pub/Sub operations"
 
-export SERVICE_ACCOUNT="ssf-broker@${PROJECT_ID}.iam.gserviceaccount.com"
+export SERVICE_ACCOUNT="ssf-hub@${PROJECT_ID}.iam.gserviceaccount.com"
 
 # Grant Pub/Sub Admin role (for topic/subscription management)
 gcloud projects add-iam-policy-binding $PROJECT_ID \
@@ -208,13 +208,13 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
     --role="roles/pubsub.viewer"
 
 # Create and download service account key
-gcloud iam service-accounts keys create ssf-broker-key.json \
+gcloud iam service-accounts keys create ssf-hub-key.json \
     --iam-account=$SERVICE_ACCOUNT
 ```
 
 #### 3. Topic and Subscription Naming
 
-The broker automatically creates topics based on event types:
+The hub automatically creates topics based on event types:
 
 | Event Type | Topic Name |
 |------------|------------|
@@ -252,7 +252,7 @@ pubsub:
 #### 5. Receiver Delivery Methods
 
 ##### Webhook Delivery (Recommended)
-The broker pushes events to receiver HTTP endpoints:
+The hub pushes events to receiver HTTP endpoints:
 
 ```json
 {
@@ -344,7 +344,7 @@ gcloud compute firewall-rules create allow-pubsub-egress \
     --allow tcp:443 \
     --destination-ranges 199.36.153.8/30,199.36.153.4/30 \
     --direction EGRESS \
-    --target-tags ssf-broker
+    --target-tags ssf-hub
 
 # For private Google access
 gcloud compute networks subnets update my-subnet \
@@ -401,8 +401,8 @@ retry:
 
 ### Docker
 ```bash
-docker build -t ssf-broker:latest .
-docker run -p 8080:8080 ssf-broker:latest
+docker build -t ssf-hub:latest .
+docker run -p 8080:8080 ssf-hub:latest
 ```
 
 ### Kubernetes
@@ -414,11 +414,11 @@ kubectl apply -f deployments/kubernetes/
 
 ### Project Structure
 ```
-ssf-broker/
+ssf-hub/
 ├── cmd/
 │   └── server/          # Main application entry point
 ├── internal/
-│   ├── broker/          # Core broker logic
+│   ├── controller/      # Core hub logic
 │   ├── handlers/        # HTTP handlers
 │   ├── registry/        # Receiver registry
 │   └── pubsub/          # Pub/Sub integration

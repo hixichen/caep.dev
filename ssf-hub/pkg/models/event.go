@@ -29,8 +29,8 @@ type Subject struct {
 
 // EventMetadata contains metadata about event processing
 type EventMetadata struct {
-	ReceivedAt    time.Time         `json:"received_at"`             // When broker received the event
-	ProcessedAt   time.Time         `json:"processed_at"`            // When broker processed the event
+	ReceivedAt    time.Time         `json:"received_at"`             // When hub received the event
+	ProcessedAt   time.Time         `json:"processed_at"`            // When hub processed the event
 	TransmitterID string            `json:"transmitter_id"`          // ID of the transmitter
 	RawSET        string            `json:"raw_set,omitempty"`       // Original SET token
 	ProcessingID  string            `json:"processing_id"`           // Unique processing ID

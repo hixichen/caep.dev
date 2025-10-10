@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/broker"
+	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/controller"
 	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/registry"
 	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/pkg/models"
 )
@@ -15,14 +15,14 @@ import (
 // Config contains configuration for handlers
 type Config struct {
 	Logger   *slog.Logger
-	Broker   *broker.Broker
+	Controller *controller.Broker
 	Registry registry.Registry
 }
 
-// Handlers contains all HTTP handlers for the SSF broker
+// Handlers contains all HTTP handlers for the SSF hub
 type Handlers struct {
 	logger   *slog.Logger
-	broker   *broker.Broker
+	controller *controller.Broker
 	registry registry.Registry
 }
 
@@ -30,7 +30,7 @@ type Handlers struct {
 func New(config *Config) *Handlers {
 	return &Handlers{
 		logger:   config.Logger,
-		broker:   config.Broker,
+		controller: config.Controller,
 		registry: config.Registry,
 	}
 }
@@ -66,7 +66,7 @@ func (h *Handlers) HandleEvents(w http.ResponseWriter, r *http.Request) {
 		"content_type", r.Header.Get("Content-Type"))
 
 	// Process the security event
-	if err := h.broker.ProcessSecurityEvent(r.Context(), string(rawSET), transmitterID); err != nil {
+	if err := h.controller.ProcessSecurityEvent(r.Context(), string(rawSET), transmitterID); err != nil {
 		h.logger.Error("Failed to process security event",
 			"transmitter_id", transmitterID,
 			"error", err)
@@ -111,7 +111,7 @@ func (h *Handlers) HandleSSFConfiguration(w http.ResponseWriter, r *http.Request
 			models.SubjectFormatURI,
 		},
 		"specification_version": "1.0",
-		"vendor":               "SSF Broker Service",
+		"vendor":               "SSF Hub Service",
 		"version":              "1.0.0",
 	}
 
@@ -145,10 +145,10 @@ func (h *Handlers) HandleReady(w http.ResponseWriter, r *http.Request) {
 
 // HandleMetrics handles Prometheus metrics requests
 func (h *Handlers) HandleMetrics(w http.ResponseWriter, r *http.Request) {
-	// Get broker statistics
-	stats, err := h.broker.GetBrokerStats()
+	// Get controller statistics
+	stats, err := h.controller.GetBrokerStats()
 	if err != nil {
-		h.logger.Error("Failed to get broker stats", "error", err)
+		h.logger.Error("Failed to get controller stats", "error", err)
 		h.writeErrorResponse(w, http.StatusInternalServerError, "Failed to get metrics")
 		return
 	}
@@ -172,7 +172,7 @@ func (h *Handlers) HandleRegisterReceiver(w http.ResponseWriter, r *http.Request
 	}
 
 	// Register the receiver
-	receiver, err := h.broker.RegisterReceiver(r.Context(), &receiverReq)
+	receiver, err := h.controller.RegisterReceiver(r.Context(), &receiverReq)
 	if err != nil {
 		h.logger.Error("Failed to register receiver",
 			"receiver_id", receiverReq.ID,
@@ -190,7 +190,7 @@ func (h *Handlers) HandleRegisterReceiver(w http.ResponseWriter, r *http.Request
 
 // HandleListReceivers handles listing all receivers
 func (h *Handlers) HandleListReceivers(w http.ResponseWriter, r *http.Request) {
-	receivers, err := h.broker.ListReceivers()
+	receivers, err := h.controller.ListReceivers()
 	if err != nil {
 		h.logger.Error("Failed to list receivers", "error", err)
 		h.writeErrorResponse(w, http.StatusInternalServerError, "Failed to list receivers")
@@ -223,7 +223,7 @@ func (h *Handlers) HandleGetReceiver(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	receiver, err := h.broker.GetReceiver(receiverID)
+	receiver, err := h.controller.GetReceiver(receiverID)
 	if err != nil {
 		h.logger.Error("Failed to get receiver", "receiver_id", receiverID, "error", err)
 		h.writeErrorResponse(w, http.StatusNotFound, "Receiver not found")
@@ -237,7 +237,7 @@ func (h *Handlers) HandleGetReceiver(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if includeSubscriptions {
-		subscriptions, err := h.broker.GetReceiverSubscriptionInfo(r.Context(), receiverID)
+		subscriptions, err := h.controller.GetReceiverSubscriptionInfo(r.Context(), receiverID)
 		if err != nil {
 			h.logger.Error("Failed to get subscription info", "receiver_id", receiverID, "error", err)
 		} else {
@@ -267,7 +267,7 @@ func (h *Handlers) HandleUpdateReceiver(w http.ResponseWriter, r *http.Request) 
 	receiverReq.ID = receiverID
 
 	// Update the receiver
-	receiver, err := h.broker.UpdateReceiver(r.Context(), &receiverReq)
+	receiver, err := h.controller.UpdateReceiver(r.Context(), &receiverReq)
 	if err != nil {
 		h.logger.Error("Failed to update receiver",
 			"receiver_id", receiverID,
@@ -289,7 +289,7 @@ func (h *Handlers) HandleUnregisterReceiver(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if err := h.broker.UnregisterReceiver(r.Context(), receiverID); err != nil {
+	if err := h.controller.UnregisterReceiver(r.Context(), receiverID); err != nil {
 		h.logger.Error("Failed to unregister receiver",
 			"receiver_id", receiverID,
 			"error", err)
@@ -397,28 +397,28 @@ func (h *Handlers) filterReceivers(receivers []*models.Receiver, statusFilter, e
 	return filtered
 }
 
-// formatPrometheusMetrics formats broker statistics as Prometheus metrics
-func (h *Handlers) formatPrometheusMetrics(stats *broker.BrokerStats) string {
-	metrics := fmt.Sprintf(`# HELP ssf_broker_receivers_total Total number of registered receivers
-# TYPE ssf_broker_receivers_total gauge
-ssf_broker_receivers_total %d
+// formatPrometheusMetrics formats controller statistics as Prometheus metrics
+func (h *Handlers) formatPrometheusMetrics(stats *controller.BrokerStats) string {
+	metrics := fmt.Sprintf(`# HELP ssf_hub_receivers_total Total number of registered receivers
+# TYPE ssf_hub_receivers_total gauge
+ssf_hub_receivers_total %d
 
 `, stats.TotalReceivers)
 
 	// Receivers by status
 	for status, count := range stats.ReceiversByStatus {
-		metrics += fmt.Sprintf(`# HELP ssf_broker_receivers_by_status Number of receivers by status
-# TYPE ssf_broker_receivers_by_status gauge
-ssf_broker_receivers_by_status{status="%s"} %d
+		metrics += fmt.Sprintf(`# HELP ssf_hub_receivers_by_status Number of receivers by status
+# TYPE ssf_hub_receivers_by_status gauge
+ssf_hub_receivers_by_status{status="%s"} %d
 
 `, status, count)
 	}
 
 	// Event type statistics
 	for eventType, count := range stats.EventTypeStats {
-		metrics += fmt.Sprintf(`# HELP ssf_broker_event_type_subscribers Number of receivers subscribed to event type
-# TYPE ssf_broker_event_type_subscribers gauge
-ssf_broker_event_type_subscribers{event_type="%s"} %d
+		metrics += fmt.Sprintf(`# HELP ssf_hub_event_type_subscribers Number of receivers subscribed to event type
+# TYPE ssf_hub_event_type_subscribers gauge
+ssf_hub_event_type_subscribers{event_type="%s"} %d
 
 `, eventType, count)
 	}

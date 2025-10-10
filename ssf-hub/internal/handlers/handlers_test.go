@@ -11,12 +11,12 @@ import (
 
 	"log/slog"
 
-	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/broker"
+	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/controller"
 	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/registry"
 	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/pkg/models"
 )
 
-// mockPubSubClient implements broker.PubSubClient for testing
+// mockPubSubClient implements controller.PubSubClient for testing
 type mockPubSubClientForHandlers struct{}
 
 func (m *mockPubSubClientForHandlers) PublishEvent(ctx context.Context, event *models.SecurityEvent, targetReceivers []string) error {
@@ -50,11 +50,11 @@ func createTestHandlers(t *testing.T) *Handlers {
 	pubsubClient := &mockPubSubClientForHandlers{}
 
 	receiverRegistry := registry.NewMemoryRegistry()
-	ssfBroker := broker.New(pubsubClient, receiverRegistry, logger)
+	ssfController := controller.New(pubsubClient, receiverRegistry, logger)
 
 	config := &Config{
 		Logger:   logger,
-		Broker:   ssfBroker,
+		Controller: ssfController,
 		Registry: receiverRegistry,
 	}
 
