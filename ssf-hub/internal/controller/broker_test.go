@@ -9,7 +9,7 @@ import (
 	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/pkg/models"
 )
 
-// mockPubSubClient is a mock implementation of broker.PubSubClient for testing
+// mockPubSubClient is a mock implementation of controller.PubSubClient for testing
 type mockPubSubClient struct {
 	publishedEvents   []*models.SecurityEvent
 	targetReceivers   [][]string
@@ -55,17 +55,17 @@ func (m *mockPubSubClient) Close() error {
 	return nil
 }
 
-func createTestBroker() (*Broker, *mockPubSubClient, registry.Registry) {
+func createTestController() (*Broker, *mockPubSubClient, registry.Registry) {
 	logger := slog.Default()
 	pubsubClient := &mockPubSubClient{}
 	receiverRegistry := registry.NewMemoryRegistry()
 
-	broker := New(pubsubClient, receiverRegistry, logger)
-	return broker, pubsubClient, receiverRegistry
+	controller := New(pubsubClient, receiverRegistry, logger)
+	return controller, pubsubClient, receiverRegistry
 }
 
-func TestBroker_RegisterReceiver(t *testing.T) {
-	broker, _, _ := createTestBroker()
+func TestController_RegisterReceiver(t *testing.T) {
+	controller, _, _ := createTestController()
 
 	receiverReq := &models.ReceiverRequest{
 		ID:          "test-receiver",
@@ -82,7 +82,7 @@ func TestBroker_RegisterReceiver(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	receiver, err := broker.RegisterReceiver(ctx, receiverReq)
+	receiver, err := controller.RegisterReceiver(ctx, receiverReq)
 	if err != nil {
 		t.Fatalf("RegisterReceiver() error = %v", err)
 	}
@@ -101,8 +101,8 @@ func TestBroker_RegisterReceiver(t *testing.T) {
 	// The hub manages all Pub/Sub operations internally
 }
 
-func TestBroker_RegisterReceiver_Invalid(t *testing.T) {
-	broker, _, _ := createTestBroker()
+func TestController_RegisterReceiver_Invalid(t *testing.T) {
+	controller, _, _ := createTestController()
 
 	// Test with invalid receiver (missing ID)
 	invalidReq := &models.ReceiverRequest{
@@ -114,14 +114,14 @@ func TestBroker_RegisterReceiver_Invalid(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	_, err := broker.RegisterReceiver(ctx, invalidReq)
+	_, err := controller.RegisterReceiver(ctx, invalidReq)
 	if err == nil {
 		t.Error("RegisterReceiver() expected error for invalid receiver but got none")
 	}
 }
 
-func TestBroker_UnregisterReceiver(t *testing.T) {
-	broker, _, registry := createTestBroker()
+func TestController_UnregisterReceiver(t *testing.T) {
+	controller, _, registry := createTestController()
 
 	// First register a receiver
 	receiver := &models.Receiver{
@@ -138,7 +138,7 @@ func TestBroker_UnregisterReceiver(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	err = broker.UnregisterReceiver(ctx, "test-receiver")
+	err = controller.UnregisterReceiver(ctx, "test-receiver")
 	if err != nil {
 		t.Fatalf("UnregisterReceiver() error = %v", err)
 	}
@@ -153,18 +153,18 @@ func TestBroker_UnregisterReceiver(t *testing.T) {
 	// The hub manages all Pub/Sub operations internally
 }
 
-func TestBroker_UnregisterReceiver_NotFound(t *testing.T) {
-	broker, _, _ := createTestBroker()
+func TestController_UnregisterReceiver_NotFound(t *testing.T) {
+	controller, _, _ := createTestController()
 
 	ctx := context.Background()
-	err := broker.UnregisterReceiver(ctx, "nonexistent")
+	err := controller.UnregisterReceiver(ctx, "nonexistent")
 	if err == nil {
 		t.Error("UnregisterReceiver() expected error for non-existent receiver but got none")
 	}
 }
 
-func TestBroker_UpdateReceiver(t *testing.T) {
-	broker, _, registry := createTestBroker()
+func TestController_UpdateReceiver(t *testing.T) {
+	controller, _, registry := createTestController()
 
 	// First register a receiver
 	originalReceiver := &models.Receiver{
@@ -192,7 +192,7 @@ func TestBroker_UpdateReceiver(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	updatedReceiver, err := broker.UpdateReceiver(ctx, updateReq)
+	updatedReceiver, err := controller.UpdateReceiver(ctx, updateReq)
 	if err != nil {
 		t.Fatalf("UpdateReceiver() error = %v", err)
 	}
@@ -211,8 +211,8 @@ func TestBroker_UpdateReceiver(t *testing.T) {
 	// Event routing is handled internally by the hub
 }
 
-func TestBroker_UpdateReceiver_SameEventTypes(t *testing.T) {
-	broker, _, registry := createTestBroker()
+func TestController_UpdateReceiver_SameEventTypes(t *testing.T) {
+	controller, _, registry := createTestController()
 
 	// First register a receiver
 	originalReceiver := &models.Receiver{
@@ -240,7 +240,7 @@ func TestBroker_UpdateReceiver_SameEventTypes(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	_, err = broker.UpdateReceiver(ctx, updateReq)
+	_, err = controller.UpdateReceiver(ctx, updateReq)
 	if err != nil {
 		t.Fatalf("UpdateReceiver() error = %v", err)
 	}
@@ -250,8 +250,8 @@ func TestBroker_UpdateReceiver_SameEventTypes(t *testing.T) {
 	// Event routing is handled internally by the hub
 }
 
-func TestBroker_GetBrokerStats(t *testing.T) {
-	broker, _, registry := createTestBroker()
+func TestController_GetControllerStats(t *testing.T) {
+	controller, _, registry := createTestController()
 
 	// Register some receivers
 	receiver1 := &models.Receiver{
@@ -275,35 +275,35 @@ func TestBroker_GetBrokerStats(t *testing.T) {
 	registry.Register(receiver1)
 	registry.Register(receiver2)
 
-	stats, err := broker.GetBrokerStats()
+	stats, err := controller.GetBrokerStats()
 	if err != nil {
 		t.Fatalf("GetBrokerStats() error = %v", err)
 	}
 
 	if stats.TotalReceivers != 2 {
-		t.Errorf("GetBrokerStats() total receivers = %d, want 2", stats.TotalReceivers)
+		t.Errorf("GetControllerStats() total receivers = %d, want 2", stats.TotalReceivers)
 	}
 
 	if stats.ReceiversByStatus[models.ReceiverStatusActive] != 1 {
-		t.Errorf("GetBrokerStats() active receivers = %d, want 1", stats.ReceiversByStatus[models.ReceiverStatusActive])
+		t.Errorf("GetControllerStats() active receivers = %d, want 1", stats.ReceiversByStatus[models.ReceiverStatusActive])
 	}
 
 	if stats.ReceiversByStatus[models.ReceiverStatusInactive] != 1 {
-		t.Errorf("GetBrokerStats() inactive receivers = %d, want 1", stats.ReceiversByStatus[models.ReceiverStatusInactive])
+		t.Errorf("GetControllerStats() inactive receivers = %d, want 1", stats.ReceiversByStatus[models.ReceiverStatusInactive])
 	}
 
 	// Check event type stats
 	if stats.EventTypeStats[models.EventTypeSessionRevoked] != 2 {
-		t.Errorf("GetBrokerStats() session-revoked subscribers = %d, want 2", stats.EventTypeStats[models.EventTypeSessionRevoked])
+		t.Errorf("GetControllerStats() session-revoked subscribers = %d, want 2", stats.EventTypeStats[models.EventTypeSessionRevoked])
 	}
 
 	if stats.EventTypeStats[models.EventTypeCredentialChange] != 1 {
-		t.Errorf("GetBrokerStats() credential-change subscribers = %d, want 1", stats.EventTypeStats[models.EventTypeCredentialChange])
+		t.Errorf("GetControllerStats() credential-change subscribers = %d, want 1", stats.EventTypeStats[models.EventTypeCredentialChange])
 	}
 }
 
-func TestBroker_ProcessSecurityEvent(t *testing.T) {
-	broker, mockClient, registry := createTestBroker()
+func TestController_ProcessSecurityEvent(t *testing.T) {
+	controller, mockClient, registry := createTestController()
 
 	// Register a receiver for session revoked events
 	receiver := &models.Receiver{
@@ -336,7 +336,7 @@ func TestBroker_ProcessSecurityEvent(t *testing.T) {
 	}`
 
 	ctx := context.Background()
-	err = broker.ProcessSecurityEvent(ctx, rawSET, "test-transmitter")
+	err = controller.ProcessSecurityEvent(ctx, rawSET, "test-transmitter")
 
 	// Note: This test will fail with current implementation since we need proper JWT
 	// In a real implementation, you'd need to create a valid JWT SET token
@@ -357,8 +357,8 @@ func TestBroker_ProcessSecurityEvent(t *testing.T) {
 	}
 }
 
-func TestBroker_ProcessSecurityEvent_Validation(t *testing.T) {
-	broker, _, _ := createTestBroker()
+func TestController_ProcessSecurityEvent_Validation(t *testing.T) {
+	controller, _, _ := createTestController()
 	ctx := context.Background()
 
 	tests := []struct {
@@ -374,7 +374,7 @@ func TestBroker_ProcessSecurityEvent_Validation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := broker.ProcessSecurityEvent(ctx, tt.rawSET, tt.transmitterID)
+			err := controller.ProcessSecurityEvent(ctx, tt.rawSET, tt.transmitterID)
 			if (err != nil) != tt.expectError {
 				t.Errorf("ProcessSecurityEvent() error = %v, expectError %v", err, tt.expectError)
 			}
@@ -382,8 +382,8 @@ func TestBroker_ProcessSecurityEvent_Validation(t *testing.T) {
 	}
 }
 
-func TestBroker_ProcessSecurityEvent_NoReceivers(t *testing.T) {
-	broker, mockClient, _ := createTestBroker()
+func TestController_ProcessSecurityEvent_NoReceivers(t *testing.T) {
+	controller, mockClient, _ := createTestController()
 
 	// Don't register any receivers
 	rawSET := `{
@@ -396,7 +396,7 @@ func TestBroker_ProcessSecurityEvent_NoReceivers(t *testing.T) {
 	}`
 
 	ctx := context.Background()
-	err := broker.ProcessSecurityEvent(ctx, rawSET, "test-transmitter")
+	err := controller.ProcessSecurityEvent(ctx, rawSET, "test-transmitter")
 
 	// Should not fail even if no receivers are found
 	if err == nil {
@@ -407,8 +407,8 @@ func TestBroker_ProcessSecurityEvent_NoReceivers(t *testing.T) {
 	}
 }
 
-func TestBroker_slicesEqual(t *testing.T) {
-	broker, _, _ := createTestBroker()
+func TestController_slicesEqual(t *testing.T) {
+	controller, _, _ := createTestController()
 
 	tests := []struct {
 		name string
@@ -426,7 +426,7 @@ func TestBroker_slicesEqual(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := broker.slicesEqual(tt.a, tt.b)
+			got := controller.slicesEqual(tt.a, tt.b)
 			if got != tt.want {
 				t.Errorf("slicesEqual() = %v, want %v", got, tt.want)
 			}
