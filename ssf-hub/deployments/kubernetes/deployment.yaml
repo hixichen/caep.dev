@@ -1,27 +1,27 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ssf-broker
+  name: ssf-hub
   labels:
-    app: ssf-broker
+    app: ssf-hub
     component: event-broker
     version: v1.0.0
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: ssf-broker
+      app: ssf-hub
   template:
     metadata:
       labels:
-        app: ssf-broker
+        app: ssf-hub
         component: event-broker
         version: v1.0.0
     spec:
-      serviceAccountName: ssf-broker-ksa
+      serviceAccountName: ssf-hub-ksa
       containers:
-      - name: ssf-broker
-        image: your-registry/ssf-broker:latest
+      - name: ssf-hub
+        image: your-registry/ssf-hub:latest
         ports:
         - containerPort: 8080
           name: http
@@ -36,7 +36,7 @@ spec:
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
-              name: ssf-broker-secrets
+              name: ssf-hub-secrets
               key: jwt-secret
         - name: SERVER_PORT
           value: "8080"
@@ -88,10 +88,10 @@ spec:
       volumes:
       - name: google-cloud-key
         secret:
-          secretName: ssf-broker-sa
+          secretName: ssf-hub-sa
       - name: config-volume
         configMap:
-          name: ssf-broker-config
+          name: ssf-hub-config
       # Security context for pod
       securityContext:
         fsGroup: 1001
@@ -105,9 +105,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: ssf-broker-service
+  name: ssf-hub-service
   labels:
-    app: ssf-broker
+    app: ssf-hub
     component: event-broker
 spec:
   type: ClusterIP
@@ -117,15 +117,15 @@ spec:
     protocol: TCP
     name: http
   selector:
-    app: ssf-broker
+    app: ssf-hub
 ---
 # External service for SSF transmitters
 apiVersion: v1
 kind: Service
 metadata:
-  name: ssf-broker-external
+  name: ssf-hub-external
   labels:
-    app: ssf-broker
+    app: ssf-hub
     component: event-broker
   annotations:
     cloud.google.com/load-balancer-type: "External"
@@ -141,22 +141,22 @@ spec:
     protocol: TCP
     name: http
   selector:
-    app: ssf-broker
+    app: ssf-hub
 ---
 # Service account for RBAC
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: ssf-broker-ksa
+  name: ssf-hub-ksa
   annotations:
     # For GKE Workload Identity (replace with your service account)
-    iam.gke.io/gcp-service-account: ssf-broker@your-project-id.iam.gserviceaccount.com
+    iam.gke.io/gcp-service-account: ssf-hub@your-project-id.iam.gserviceaccount.com
 ---
 # ConfigMap for application configuration
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: ssf-broker-config
+  name: ssf-hub-config
 data:
   config.yaml: |
     server:
@@ -188,7 +188,7 @@ data:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: ssf-broker-secrets
+  name: ssf-hub-secrets
 type: Opaque
 data:
   # Generate with: echo -n "your-secret-here" | base64

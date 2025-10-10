@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-broker/internal/broker"
-	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-broker/internal/registry"
-	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-broker/pkg/models"
+	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/broker"
+	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/registry"
+	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/pkg/models"
 )
 
 // Config contains configuration for handlers

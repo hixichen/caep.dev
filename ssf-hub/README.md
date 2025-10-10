@@ -1,10 +1,10 @@
-# SSF Broker Service
+# SSF Hub Service
 
 A centralized SSF (Shared Signals Framework) broker service that acts as an event distribution hub using Google Cloud Pub/Sub as the backend.
 
 ## Overview
 
-The SSF Broker Service provides:
+The SSF Hub Service provides:
 
 - **SSF Receiver**: Standards-compliant SSF receiver that accepts events from any SSF transmitter
 - **Event Broker**: Centralized hub for distributing security events to multiple consumers
@@ -16,7 +16,7 @@ The SSF Broker Service provides:
 
 ```
 [SSF Transmitter A] ──┐
-[SSF Transmitter B] ──┤ HTTP ──► [SSF Broker Service] ──► [Pub/Sub Topics] ──► [Registered Receivers]
+[SSF Transmitter B] ──┤ HTTP ──► [SSF Hub Service] ──► [Pub/Sub Topics] ──► [Registered Receivers]
 [SSF Transmitter C] ──┘              |                                        ├─► HTTP Webhooks
                                       |                                        ├─► Pull Subscriptions
                                       ▼                                        └─► Custom Integrations
@@ -133,7 +133,7 @@ The service is configured via environment variables and/or YAML configuration fi
 
 ### Google Cloud Pub/Sub Configuration
 
-The SSF Broker uses Google Cloud Pub/Sub as its event distribution backbone. Here's how to configure it:
+The SSF Hub uses Google Cloud Pub/Sub as its event distribution backbone. Here's how to configure it:
 
 #### 1. GCP Project Setup
 
@@ -154,10 +154,10 @@ gcloud services enable iam.googleapis.com
 Create a service account with appropriate Pub/Sub permissions:
 
 ```bash
-# Create service account for SSF Broker
+# Create service account for SSF Hub
 gcloud iam service-accounts create ssf-broker \
-    --display-name="SSF Broker Service Account" \
-    --description="Service account for SSF Broker Pub/Sub operations"
+    --display-name="SSF Hub Service Account" \
+    --description="Service account for SSF Hub Pub/Sub operations"
 
 export SERVICE_ACCOUNT="ssf-broker@${PROJECT_ID}.iam.gserviceaccount.com"
 

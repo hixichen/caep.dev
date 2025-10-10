@@ -1,4 +1,4 @@
-# Multi-stage build for SSF Broker Service
+# Multi-stage build for SSF Hub Service
 FROM golang:1.21-alpine AS builder
 
 # Set working directory
@@ -16,8 +16,8 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the SSF broker service
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ssf-broker ./cmd/server/
+# Build the SSF hub service
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ssf-hub ./cmd/server/
 
 # Final stage
 FROM alpine:latest
@@ -28,10 +28,10 @@ RUN apk --no-cache add ca-certificates wget
 WORKDIR /root/
 
 # Create directories for configs and secrets
-RUN mkdir -p /etc/config /var/secrets/google /var/lib/ssf-broker
+RUN mkdir -p /etc/config /var/secrets/google /var/lib/ssf-hub
 
 # Copy the binary from builder stage
-COPY --from=builder /app/ssf-broker .
+COPY --from=builder /app/ssf-hub .
 
 # Copy configuration files
 COPY --from=builder /app/configs/ /etc/config/
@@ -48,7 +48,7 @@ RUN addgroup -g 1001 -S appgroup && \
     adduser -u 1001 -S appuser -G appgroup
 
 # Change ownership of the working directory
-RUN chown -R appuser:appgroup /root /var/lib/ssf-broker
+RUN chown -R appuser:appgroup /root /var/lib/ssf-hub
 
 # Switch to non-root user
 USER appuser
@@ -58,5 +58,5 @@ ENV SERVER_PORT=8080
 ENV LOG_LEVEL=info
 ENV LOG_FORMAT=json
 
-# Run the SSF broker service
-CMD ["./ssf-broker"]
+# Run the SSF hub service
+CMD ["./ssf-hub"]

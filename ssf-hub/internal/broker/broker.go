@@ -10,8 +10,8 @@ import (
 
 	"github.com/sgnl-ai/caep.dev/secevent/pkg/parser"
 	"github.com/sgnl-ai/caep.dev/secevent/pkg/token"
-	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-broker/internal/registry"
-	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-broker/pkg/models"
+	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/registry"
+	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/pkg/models"
 )
 
 // PubSubClient interface for pub/sub operations

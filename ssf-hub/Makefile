@@ -1,4 +1,4 @@
-# SSF Broker Service Makefile
+# SSF Hub Service Makefile
 
 .PHONY: help build test clean run docker-build docker-run lint fmt vet deps
 
@@ -8,13 +8,13 @@ help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 # Build
-build: ## Build the SSF broker binary
-	@echo "Building SSF broker..."
-	@go build -o bin/ssf-broker ./cmd/server
+build: ## Build the SSF hub binary
+	@echo "Building SSF hub..."
+	@go build -o bin/ssf-hub ./cmd/server
 
 build-linux: ## Build for Linux
-	@echo "Building SSF broker for Linux..."
-	@GOOS=linux GOARCH=amd64 go build -o bin/ssf-broker-linux ./cmd/server
+	@echo "Building SSF hub for Linux..."
+	@GOOS=linux GOARCH=amd64 go build -o bin/ssf-hub-linux ./cmd/server
 
 # Test
 test: ## Run all tests
@@ -54,18 +54,18 @@ deps: ## Download dependencies
 	@go mod tidy
 
 # Run
-run: ## Run the SSF broker locally
-	@echo "Starting SSF broker..."
+run: ## Run the SSF hub locally
+	@echo "Starting SSF hub..."
 	@GCP_PROJECT_ID=test-project PUBSUB_TOPIC_PREFIX=ssf-events-test go run ./cmd/server
 
 run-dev: ## Run with development settings
-	@echo "Starting SSF broker in development mode..."
+	@echo "Starting SSF hub in development mode..."
 	@LOG_LEVEL=debug GCP_PROJECT_ID=test-project PUBSUB_TOPIC_PREFIX=ssf-events-dev go run ./cmd/server
 
 # Docker
 docker-build: ## Build Docker image
 	@echo "Building Docker image..."
-	@docker build -t ssf-broker:latest .
+	@docker build -t ssf-hub:latest .
 
 docker-run: ## Run Docker container
 	@echo "Running Docker container..."
@@ -73,12 +73,12 @@ docker-run: ## Run Docker container
 		-e GCP_PROJECT_ID=test-project \
 		-e PUBSUB_TOPIC_PREFIX=ssf-events-test \
 		-e LOG_LEVEL=debug \
-		ssf-broker:latest
+		ssf-hub:latest
 
 docker-push: ## Push Docker image to registry
 	@echo "Pushing Docker image..."
-	@docker tag ssf-broker:latest $(REGISTRY)/ssf-broker:$(VERSION)
-	@docker push $(REGISTRY)/ssf-broker:$(VERSION)
+	@docker tag ssf-hub:latest $(REGISTRY)/ssf-hub:$(VERSION)
+	@docker push $(REGISTRY)/ssf-hub:$(VERSION)
 
 # Kubernetes
 k8s-deploy: ## Deploy to Kubernetes
@@ -90,11 +90,11 @@ k8s-delete: ## Delete from Kubernetes
 	@kubectl delete -f deployments/kubernetes/
 
 k8s-logs: ## View Kubernetes logs
-	@kubectl logs -l app=ssf-broker --tail=100 -f
+	@kubectl logs -l app=ssf-hub --tail=100 -f
 
 k8s-status: ## Check Kubernetes deployment status
-	@kubectl get pods -l app=ssf-broker
-	@kubectl get svc ssf-broker-service
+	@kubectl get pods -l app=ssf-hub
+	@kubectl get svc ssf-hub-service
 
 # Development
 dev-setup: ## Set up development environment
@@ -128,8 +128,8 @@ validate-config: ## Validate configuration files
 release: clean build-linux test lint ## Build release version
 	@echo "Creating release..."
 	@mkdir -p release
-	@tar -czf release/ssf-broker-$(VERSION)-linux-amd64.tar.gz -C bin ssf-broker-linux
-	@echo "Release created: release/ssf-broker-$(VERSION)-linux-amd64.tar.gz"
+	@tar -czf release/ssf-hub-$(VERSION)-linux-amd64.tar.gz -C bin ssf-hub-linux
+	@echo "Release created: release/ssf-hub-$(VERSION)-linux-amd64.tar.gz"
 
 # Variables (can be overridden)
 REGISTRY ?= your-registry.com

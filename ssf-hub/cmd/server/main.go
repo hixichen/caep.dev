@@ -12,11 +12,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-broker/internal/broker"
-	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-broker/internal/handlers"
-	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-broker/internal/pubsub"
-	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-broker/internal/registry"
-	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-broker/pkg/api"
+	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/broker"
+	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/handlers"
+	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/pubsub"
+	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/registry"
+	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/pkg/api"
 )
 
 func main() {

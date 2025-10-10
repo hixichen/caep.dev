@@ -10,7 +10,7 @@ import (
 	"cloud.google.com/go/pubsub"
 	"google.golang.org/api/option"
 
-	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-broker/pkg/models"
+	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/pkg/models"
 )
 
 // Client wraps Google Cloud Pub/Sub client with SSF broker functionality

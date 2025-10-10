@@ -1,4 +1,4 @@
-# SSF Broker Quick Reference
+# SSF Hub Quick Reference
 
 ## API Endpoints
 
@@ -121,7 +121,7 @@ curl -X POST https://receiver.com/events \
 
 ### Build Image
 ```bash
-docker build -t ssf-broker:latest .
+docker build -t ssf-hub:latest .
 ```
 
 ### Run Container
@@ -130,7 +130,7 @@ docker run -p 8080:8080 \
   -e GCP_PROJECT_ID="your-project" \
   -e GOOGLE_APPLICATION_CREDENTIALS="/app/credentials.json" \
   -v /path/to/credentials.json:/app/credentials.json \
-  ssf-broker:latest
+  ssf-hub:latest
 ```
 
 ## Kubernetes Commands
@@ -142,13 +142,13 @@ kubectl apply -f deployments/kubernetes/
 
 ### Check Status
 ```bash
-kubectl get pods -l app=ssf-broker
-kubectl logs -l app=ssf-broker
+kubectl get pods -l app=ssf-hub
+kubectl logs -l app=ssf-hub
 ```
 
 ### Scale
 ```bash
-kubectl scale deployment ssf-broker --replicas=5
+kubectl scale deployment ssf-hub --replicas=5
 ```
 
 ## Pub/Sub Commands
@@ -172,7 +172,7 @@ gcloud pubsub subscriptions describe ssf-events-receiver-id-session-revoked
 
 ### Check Logs
 ```bash
-kubectl logs -l app=ssf-broker --tail=100
+kubectl logs -l app=ssf-hub --tail=100
 ```
 
 ### Debug Receiver

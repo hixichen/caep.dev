@@ -1,4 +1,4 @@
-# SSF Broker Usage Guide
+# SSF Hub Usage Guide
 
 ## Table of Contents
 
@@ -14,7 +14,7 @@
 
 ## Overview
 
-The SSF Broker is a centralized hub for Shared Signals Framework (SSF) events that enables secure, real-time distribution of security events across multiple systems. It acts as both an SSF receiver (accepting events from transmitters) and an event broker (distributing events to registered receivers).
+The SSF Hub is a centralized hub for Shared Signals Framework (SSF) events that enables secure, real-time distribution of security events across multiple systems. It acts as both an SSF receiver (accepting events from transmitters) and an event broker (distributing events to registered receivers).
 
 ### Key Benefits
 
@@ -40,7 +40,7 @@ The SSF Broker is a centralized hub for Shared Signals Framework (SSF) events th
           └──────────────────────┼──────────────────────┘
                                  │
                     ┌────────────▼───────────┐
-                    │    SSF Broker Service  │
+                    │    SSF Hub Service  │
                     │                        │
                     │  ┌─────────────────┐   │
                     │  │ Event Parser &  │   │
@@ -274,7 +274,7 @@ import "github.com/sgnl-ai/caep.dev/ssfreceiver"
 
 // Configure transmitter to send to broker
 transmitterConfig := &TransmitterConfig{
-    BrokerURL: "https://ssf-broker.company.com",
+    BrokerURL: "https://ssf-hub.company.com",
     Events: []string{
         "https://schemas.openid.net/secevent/caep/event-type/session-revoked",
         "https://schemas.openid.net/secevent/caep/event-type/credential-change",
@@ -290,7 +290,7 @@ transmitterConfig := &TransmitterConfig{
 
 ```bash
 # Send security event to broker
-curl -X POST https://ssf-broker.company.com/events \
+curl -X POST https://ssf-hub.company.com/events \
   -H "Content-Type: application/secevent+jwt" \
   -H "Authorization: Bearer transmitter-token" \
   -d "$SECURITY_EVENT_TOKEN"
@@ -300,7 +300,7 @@ curl -X POST https://ssf-broker.company.com/events \
 
 ```bash
 # Get broker SSF configuration
-curl https://ssf-broker.company.com/.well-known/ssf_configuration
+curl https://ssf-hub.company.com/.well-known/ssf_configuration
 ```
 
 ### For Event Receivers
@@ -309,7 +309,7 @@ curl https://ssf-broker.company.com/.well-known/ssf_configuration
 
 ```bash
 # Register as event receiver
-curl -X POST https://ssf-broker.company.com/api/v1/receivers \
+curl -X POST https://ssf-hub.company.com/api/v1/receivers \
   -H "Content-Type: application/json" \
   -d '{
     "id": "my-application",
@@ -373,7 +373,7 @@ func handleSecurityEvent(w http.ResponseWriter, r *http.Request) {
 
 ```bash
 # Configure for pull delivery
-curl -X POST https://ssf-broker.company.com/api/v1/receivers \
+curl -X POST https://ssf-hub.company.com/api/v1/receivers \
   -H "Content-Type: application/json" \
   -d '{
     "id": "batch-processor",
@@ -391,31 +391,31 @@ curl -X POST https://ssf-broker.company.com/api/v1/receivers \
 
 ```bash
 # Check broker health
-curl https://ssf-broker.company.com/health
+curl https://ssf-hub.company.com/health
 
 # Check readiness
-curl https://ssf-broker.company.com/ready
+curl https://ssf-hub.company.com/ready
 
 # Get metrics
-curl https://ssf-broker.company.com/metrics
+curl https://ssf-hub.company.com/metrics
 ```
 
 #### 2. Manage Receivers
 
 ```bash
 # List all receivers
-curl https://ssf-broker.company.com/api/v1/receivers
+curl https://ssf-hub.company.com/api/v1/receivers
 
 # Get receiver details
-curl https://ssf-broker.company.com/api/v1/receivers/my-application
+curl https://ssf-hub.company.com/api/v1/receivers/my-application
 
 # Update receiver configuration
-curl -X PUT https://ssf-broker.company.com/api/v1/receivers/my-application \
+curl -X PUT https://ssf-hub.company.com/api/v1/receivers/my-application \
   -H "Content-Type: application/json" \
   -d '{ "name": "Updated Application Name" }'
 
 # Remove receiver
-curl -X DELETE https://ssf-broker.company.com/api/v1/receivers/my-application
+curl -X DELETE https://ssf-hub.company.com/api/v1/receivers/my-application
 ```
 
 ## Configuration Examples
@@ -427,7 +427,7 @@ curl -X DELETE https://ssf-broker.company.com/api/v1/receivers/my-application
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: ssf-broker-config
+  name: ssf-hub-config
 data:
   config.yaml: |
     server:
@@ -794,7 +794,7 @@ ssf_broker_cpu_usage_percent
 ```json
 {
   "dashboard": {
-    "title": "SSF Broker Overview",
+    "title": "SSF Hub Overview",
     "panels": [
       {
         "title": "Event Throughput",
@@ -841,16 +841,16 @@ ssf_broker_cpu_usage_percent
 
 ```bash
 # 1. Check broker health
-curl https://ssf-broker.company.com/health
+curl https://ssf-hub.company.com/health
 
 # 2. Check recent logs
-kubectl logs -l app=ssf-broker --tail=100 | grep ERROR
+kubectl logs -l app=ssf-hub --tail=100 | grep ERROR
 
 # 3. Check Pub/Sub subscription lag
 gcloud pubsub subscriptions describe ssf-events-receiver-id-session-revoked
 
 # 4. Verify receiver configuration
-curl https://ssf-broker.company.com/api/v1/receivers/receiver-id
+curl https://ssf-hub.company.com/api/v1/receivers/receiver-id
 
 # 5. Test receiver endpoint
 curl -X POST https://receiver.company.com/events \
@@ -862,16 +862,16 @@ curl -X POST https://receiver.company.com/events \
 
 ```bash
 # 1. Check processing metrics
-curl https://ssf-broker.company.com/metrics | grep duration
+curl https://ssf-hub.company.com/metrics | grep duration
 
 # 2. Check Pub/Sub metrics
 gcloud monitoring metrics list --filter="metric.type:pubsub"
 
 # 3. Check resource utilization
-kubectl top pods -l app=ssf-broker
+kubectl top pods -l app=ssf-hub
 
 # 4. Review concurrent processing settings
-kubectl get configmap ssf-broker-config -o yaml
+kubectl get configmap ssf-hub-config -o yaml
 ```
 
 ## Troubleshooting
@@ -887,7 +887,7 @@ kubectl get configmap ssf-broker-config -o yaml
 **Investigation**:
 ```bash
 # Check receiver status
-curl https://ssf-broker.company.com/api/v1/receivers/receiver-id
+curl https://ssf-hub.company.com/api/v1/receivers/receiver-id
 
 # Verify Pub/Sub subscriptions
 gcloud pubsub subscriptions list --filter="name:ssf-events"
@@ -911,10 +911,10 @@ curl -I https://receiver.company.com/events
 **Investigation**:
 ```bash
 # Check memory metrics
-kubectl top pods -l app=ssf-broker
+kubectl top pods -l app=ssf-hub
 
 # Review concurrent processing settings
-kubectl describe configmap ssf-broker-config
+kubectl describe configmap ssf-hub-config
 ```
 
 **Solutions**:
@@ -956,10 +956,10 @@ gcloud pubsub topics list
 **Investigation**:
 ```bash
 # Check authentication configuration
-kubectl get secret ssf-broker-secrets -o yaml
+kubectl get secret ssf-hub-secrets -o yaml
 
 # Review logs for auth errors
-kubectl logs -l app=ssf-broker | grep -i auth
+kubectl logs -l app=ssf-hub | grep -i auth
 ```
 
 **Solutions**:
@@ -1045,13 +1045,13 @@ Access debug information:
 
 ```bash
 # Get receiver debug info
-curl https://ssf-broker.company.com/debug/receivers
+curl https://ssf-hub.company.com/debug/receivers
 
 # Get subscription details
-curl https://ssf-broker.company.com/debug/subscriptions
+curl https://ssf-hub.company.com/debug/subscriptions
 
 # Get recent event processing info
-curl https://ssf-broker.company.com/debug/events
+curl https://ssf-hub.company.com/debug/events
 ```
 
-This completes the comprehensive usage guide for the SSF Broker service. The guide provides practical guidance for all stakeholders - from developers integrating with the broker to operators managing it in production.
+This completes the comprehensive usage guide for the SSF Hub service. The guide provides practical guidance for all stakeholders - from developers integrating with the broker to operators managing it in production.

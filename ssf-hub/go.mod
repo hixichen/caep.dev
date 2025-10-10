@@ -1,4 +1,4 @@
-module github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-broker
+module github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub
 
 go 1.22.0
 

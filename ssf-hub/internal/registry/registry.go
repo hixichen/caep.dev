@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-broker/pkg/models"
+	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/pkg/models"
 )
 
 // Registry manages registered receivers

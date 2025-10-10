@@ -1,9 +1,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: ssf-broker-ingress
+  name: ssf-hub-ingress
   labels:
-    app: ssf-broker
+    app: ssf-hub
     component: event-broker
   annotations:
     # NGINX Ingress Controller annotations
@@ -35,10 +35,10 @@ spec:
   ingressClassName: nginx
   tls:
   - hosts:
-    - ssf-broker.your-domain.com
-    secretName: ssf-broker-tls
+    - ssf-hub.your-domain.com
+    secretName: ssf-hub-tls
   rules:
-  - host: ssf-broker.your-domain.com
+  - host: ssf-hub.your-domain.com
     http:
       paths:
       # SSF standard endpoints
@@ -46,14 +46,14 @@ spec:
         pathType: Exact
         backend:
           service:
-            name: ssf-broker-service
+            name: ssf-hub-service
             port:
               number: 80
       - path: /.well-known/ssf_configuration
         pathType: Exact
         backend:
           service:
-            name: ssf-broker-service
+            name: ssf-hub-service
             port:
               number: 80
 
@@ -62,21 +62,21 @@ spec:
         pathType: Exact
         backend:
           service:
-            name: ssf-broker-service
+            name: ssf-hub-service
             port:
               number: 80
       - path: /ready
         pathType: Exact
         backend:
           service:
-            name: ssf-broker-service
+            name: ssf-hub-service
             port:
               number: 80
       - path: /metrics
         pathType: Exact
         backend:
           service:
-            name: ssf-broker-service
+            name: ssf-hub-service
             port:
               number: 80
 
@@ -85,7 +85,7 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: ssf-broker-service
+            name: ssf-hub-service
             port:
               number: 80
 ---
@@ -93,9 +93,9 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: ssf-broker-internal-ingress
+  name: ssf-hub-internal-ingress
   labels:
-    app: ssf-broker
+    app: ssf-hub
     component: event-broker
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
@@ -104,7 +104,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: ssf-broker-internal.your-domain.com
+  - host: ssf-hub-internal.your-domain.com
     http:
       paths:
       # Internal management endpoints only
@@ -112,20 +112,20 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: ssf-broker-service
+            name: ssf-hub-service
             port:
               number: 80
       - path: /metrics
         pathType: Exact
         backend:
           service:
-            name: ssf-broker-service
+            name: ssf-hub-service
             port:
               number: 80
       - path: /health
         pathType: Exact
         backend:
           service:
-            name: ssf-broker-service
+            name: ssf-hub-service
             port:
               number: 80

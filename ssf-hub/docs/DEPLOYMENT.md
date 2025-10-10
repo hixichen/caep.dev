@@ -1,13 +1,13 @@
-# SSF Broker Service Deployment Guide
+# SSF Hub Service Deployment Guide
 
-This guide covers deploying the SSF Broker Service to Kubernetes with Google Cloud Pub/Sub backend.
+This guide covers deploying the SSF Hub Service to Kubernetes with Google Cloud Pub/Sub backend.
 
 ## Overview
 
-The SSF Broker Service acts as a centralized hub for Shared Signals Framework (SSF) events:
+The SSF Hub Service acts as a centralized hub for Shared Signals Framework (SSF) events:
 
 ```
-[SSF Transmitters] --HTTP--> [SSF Broker] --Pub/Sub--> [Registered Receivers]
+[SSF Transmitters] --HTTP--> [SSF Hub] --Pub/Sub--> [Registered Receivers]
                                  |
                                  v
                         [Registration API]
@@ -26,13 +26,13 @@ The SSF Broker Service acts as a centralized hub for Shared Signals Framework (S
 
 ```bash
 # Clone the repository
-cd ssf-broker
+cd ssf-hub
 
 # Build the Docker image
-docker build -t your-registry/ssf-broker:latest .
+docker build -t your-registry/ssf-hub:latest .
 
 # Push to your registry
-docker push your-registry/ssf-broker:latest
+docker push your-registry/ssf-hub:latest
 ```
 
 ### 2. Set up Google Cloud Resources
@@ -47,11 +47,11 @@ gcloud services enable pubsub.googleapis.com
 gcloud services enable container.googleapis.com
 
 # Create service account for the broker
-gcloud iam service-accounts create ssf-broker \
-    --display-name="SSF Broker Service Account"
+gcloud iam service-accounts create ssf-hub \
+    --display-name="SSF Hub Service Account"
 
 # Grant Pub/Sub permissions
-export SERVICE_ACCOUNT_EMAIL="ssf-broker@$PROJECT_ID.iam.gserviceaccount.com"
+export SERVICE_ACCOUNT_EMAIL="ssf-hub@$PROJECT_ID.iam.gserviceaccount.com"
 
 gcloud projects add-iam-policy-binding $PROJECT_ID \
     --member="serviceAccount:$SERVICE_ACCOUNT_EMAIL" \
@@ -66,7 +66,7 @@ gcloud iam service-accounts keys create ./service-account-key.json \
 
 ```bash
 # Create Kubernetes secrets
-kubectl create secret generic ssf-broker-sa \
+kubectl create secret generic ssf-hub-sa \
     --from-file=service-account-key.json
 
 # Update deployment.yaml with your registry and project ID
@@ -77,17 +77,17 @@ sed -i 's/your-project-id/my-project/g' deployments/kubernetes/deployment.yaml
 kubectl apply -f deployments/kubernetes/deployment.yaml
 
 # Check deployment status
-kubectl get pods -l app=ssf-broker
-kubectl get svc ssf-broker-external
+kubectl get pods -l app=ssf-hub
+kubectl get svc ssf-hub-external
 ```
 
 ### 4. Configure DNS (Optional)
 
 ```bash
 # Get external IP
-EXTERNAL_IP=$(kubectl get svc ssf-broker-external -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+EXTERNAL_IP=$(kubectl get svc ssf-hub-external -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 
-# Configure your DNS to point ssf-broker.your-domain.com to $EXTERNAL_IP
+# Configure your DNS to point ssf-hub.your-domain.com to $EXTERNAL_IP
 # Then apply ingress configuration
 kubectl apply -f deployments/kubernetes/ingress.yaml
 ```
@@ -120,7 +120,7 @@ Configure your SSF transmitters to send events to the broker:
 ```yaml
 # transmitter-config.yaml
 ssf_receiver:
-  base_url: "https://ssf-broker.your-domain.com"
+  base_url: "https://ssf-hub.your-domain.com"
   auth:
     type: "bearer"
     token: "your-auth-token"
@@ -131,7 +131,7 @@ events:
 
 delivery:
   method: "push"
-  endpoint_url: "https://ssf-broker.your-domain.com/events"
+  endpoint_url: "https://ssf-hub.your-domain.com/events"
 ```
 
 ### 2. Register Event Receivers
@@ -140,7 +140,7 @@ Register services that want to receive security events:
 
 ```bash
 # Register a receiver via API
-curl -X POST https://ssf-broker.your-domain.com/api/v1/receivers \
+curl -X POST https://ssf-hub.your-domain.com/api/v1/receivers \
   -H "Content-Type: application/json" \
   -d '{
     "id": "my-security-service",
@@ -164,13 +164,13 @@ curl -X POST https://ssf-broker.your-domain.com/api/v1/receivers \
 
 ```bash
 # Get SSF configuration
-curl https://ssf-broker.your-domain.com/.well-known/ssf_configuration
+curl https://ssf-hub.your-domain.com/.well-known/ssf_configuration
 
 # List registered receivers
-curl https://ssf-broker.your-domain.com/api/v1/receivers
+curl https://ssf-hub.your-domain.com/api/v1/receivers
 
 # Get metrics
-curl https://ssf-broker.your-domain.com/metrics
+curl https://ssf-hub.your-domain.com/metrics
 ```
 
 ## Event Flow
@@ -216,10 +216,10 @@ Structured JSON logs include:
 
 ```bash
 # Scale deployment
-kubectl scale deployment ssf-broker --replicas=5
+kubectl scale deployment ssf-hub --replicas=5
 
 # Enable autoscaling
-kubectl autoscale deployment ssf-broker \
+kubectl autoscale deployment ssf-hub \
     --min=3 --max=10 --cpu-percent=70
 ```
 
@@ -245,11 +245,11 @@ Pub/Sub automatically scales based on load. Configure:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: ssf-broker-netpol
+  name: ssf-hub-netpol
 spec:
   podSelector:
     matchLabels:
-      app: ssf-broker
+      app: ssf-hub
   policyTypes:
   - Ingress
   - Egress
@@ -281,7 +281,7 @@ spec:
 #### Pod CrashLoopBackOff
 ```bash
 # Check logs
-kubectl logs -l app=ssf-broker --tail=50
+kubectl logs -l app=ssf-hub --tail=50
 
 # Check events
 kubectl describe pod <pod-name>
@@ -297,17 +297,17 @@ gcloud pubsub topics list
 #### High Memory Usage
 ```bash
 # Check metrics
-kubectl top pods -l app=ssf-broker
+kubectl top pods -l app=ssf-hub
 
 # Adjust resource limits
-kubectl patch deployment ssf-broker -p '{"spec":{"template":{"spec":{"containers":[{"name":"ssf-broker","resources":{"limits":{"memory":"2Gi"}}}]}}}}'
+kubectl patch deployment ssf-hub -p '{"spec":{"template":{"spec":{"containers":[{"name":"ssf-hub","resources":{"limits":{"memory":"2Gi"}}}]}}}}'
 ```
 
 ### Debug Mode
 
 Enable debug logging:
 ```bash
-kubectl set env deployment/ssf-broker LOG_LEVEL=debug
+kubectl set env deployment/ssf-hub LOG_LEVEL=debug
 ```
 
 ## Production Checklist
@@ -327,7 +327,7 @@ kubectl set env deployment/ssf-broker LOG_LEVEL=debug
 
 If migrating from individual SSF receiver implementations:
 
-1. **Deploy SSF Broker** using this guide
+1. **Deploy SSF Hub** using this guide
 2. **Register your services** as receivers via the API
 3. **Update transmitters** to send to the broker instead of individual services
 4. **Verify event flow** using monitoring and logs
