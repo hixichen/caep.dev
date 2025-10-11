@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -1190,5 +1191,173 @@ func TestHandlers_FilterReceivers_EdgeCases(t *testing.T) {
 
 	if len(filtered) != 2 {
 		t.Errorf("filterReceivers() with no filters: got %d receivers, want 2", len(filtered))
+	}
+}
+
+func TestHandlers_isDevMode(t *testing.T) {
+	handlers := createTestHandlers(t)
+
+	tests := []struct {
+		name     string
+		setupEnv func()
+		setupReq func(*http.Request)
+		want     bool
+	}{
+		{
+			name: "DEV_DEBUG environment variable true",
+			setupEnv: func() {
+				os.Setenv("DEV_DEBUG", "true")
+			},
+			setupReq: func(req *http.Request) {},
+			want:     true,
+		},
+		{
+			name: "X-Dev-Mode header true",
+			setupEnv: func() {
+				os.Unsetenv("DEV_DEBUG")
+			},
+			setupReq: func(req *http.Request) {
+				req.Header.Set("X-Dev-Mode", "true")
+			},
+			want: true,
+		},
+		{
+			name: "both environment and header set",
+			setupEnv: func() {
+				os.Setenv("DEV_DEBUG", "true")
+			},
+			setupReq: func(req *http.Request) {
+				req.Header.Set("X-Dev-Mode", "true")
+			},
+			want: true,
+		},
+		{
+			name: "neither set",
+			setupEnv: func() {
+				os.Unsetenv("DEV_DEBUG")
+			},
+			setupReq: func(req *http.Request) {},
+			want:     false,
+		},
+		{
+			name: "DEV_DEBUG false",
+			setupEnv: func() {
+				os.Setenv("DEV_DEBUG", "false")
+			},
+			setupReq: func(req *http.Request) {},
+			want:     false,
+		},
+		{
+			name: "X-Dev-Mode false",
+			setupEnv: func() {
+				os.Unsetenv("DEV_DEBUG")
+			},
+			setupReq: func(req *http.Request) {
+				req.Header.Set("X-Dev-Mode", "false")
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup environment
+			tt.setupEnv()
+			defer os.Unsetenv("DEV_DEBUG")
+
+			// Create request
+			req := httptest.NewRequest("POST", "/events", nil)
+			tt.setupReq(req)
+
+			// Test
+			got := handlers.isDevMode(req)
+			if got != tt.want {
+				t.Errorf("isDevMode() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestHandlers_getTransmitterID_DevMode(t *testing.T) {
+	handlers := createTestHandlers(t)
+
+	tests := []struct {
+		name     string
+		setupEnv func()
+		setupReq func(*http.Request)
+		want     string
+	}{
+		{
+			name: "dev mode with X-Transmitter-ID header",
+			setupEnv: func() {
+				os.Setenv("DEV_DEBUG", "true")
+				os.Unsetenv("DEV_DEFAULT_TRANSMITTER")
+			},
+			setupReq: func(req *http.Request) {
+				req.Header.Set("X-Transmitter-ID", "dev-header-transmitter")
+			},
+			want: "dev-header-transmitter",
+		},
+		{
+			name: "dev mode with DEV_DEFAULT_TRANSMITTER",
+			setupEnv: func() {
+				os.Setenv("DEV_DEBUG", "true")
+				os.Setenv("DEV_DEFAULT_TRANSMITTER", "env-transmitter")
+			},
+			setupReq: func(req *http.Request) {},
+			want:     "env-transmitter",
+		},
+		{
+			name: "dev mode with X-Dev-Mode header",
+			setupEnv: func() {
+				os.Unsetenv("DEV_DEBUG")
+				os.Unsetenv("DEV_DEFAULT_TRANSMITTER")
+			},
+			setupReq: func(req *http.Request) {
+				req.Header.Set("X-Dev-Mode", "true")
+				req.Header.Set("X-Transmitter-ID", "header-dev-transmitter")
+			},
+			want: "header-dev-transmitter",
+		},
+		{
+			name: "dev mode default fallback",
+			setupEnv: func() {
+				os.Setenv("DEV_DEBUG", "true")
+				os.Unsetenv("DEV_DEFAULT_TRANSMITTER")
+			},
+			setupReq: func(req *http.Request) {},
+			want:     "dev-transmitter",
+		},
+		{
+			name: "non-dev mode normal operation",
+			setupEnv: func() {
+				os.Unsetenv("DEV_DEBUG")
+			},
+			setupReq: func(req *http.Request) {
+				req.Header.Set("X-Transmitter-ID", "normal-transmitter")
+			},
+			want: "normal-transmitter",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup environment
+			tt.setupEnv()
+			defer func() {
+				os.Unsetenv("DEV_DEBUG")
+				os.Unsetenv("DEV_DEFAULT_TRANSMITTER")
+			}()
+
+			// Create request
+			req := httptest.NewRequest("POST", "/events", nil)
+			tt.setupReq(req)
+
+			// Test
+			got := handlers.getTransmitterID(req)
+			if got != tt.want {
+				t.Errorf("getTransmitterID() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 
 	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/controller"
 	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/registry"
@@ -420,6 +421,26 @@ func (h *Handlers) HandleUnregisterReceiver(w http.ResponseWriter, r *http.Reque
 
 // getTransmitterID extracts transmitter ID from request
 func (h *Handlers) getTransmitterID(r *http.Request) string {
+	// Check for development mode bypass
+	if h.isDevMode(r) {
+		h.logger.Debug("Development mode detected, using dev auth bypass")
+
+		// In dev mode, prefer X-Transmitter-ID header
+		if transmitterID := r.Header.Get("X-Transmitter-ID"); transmitterID != "" {
+			h.logger.Debug("Using transmitter ID from dev mode header", "transmitter_id", transmitterID)
+			return transmitterID
+		}
+
+		// Fall back to environment variable or default dev transmitter
+		if devTransmitter := os.Getenv("DEV_DEFAULT_TRANSMITTER"); devTransmitter != "" {
+			h.logger.Debug("Using transmitter ID from DEV_DEFAULT_TRANSMITTER", "transmitter_id", devTransmitter)
+			return devTransmitter
+		}
+
+		h.logger.Debug("Using default dev transmitter ID")
+		return "dev-transmitter"
+	}
+
 	// Try to get from custom header first
 	if transmitterID := r.Header.Get("X-Transmitter-ID"); transmitterID != "" {
 		return transmitterID
@@ -440,6 +461,21 @@ func (h *Handlers) getTransmitterID(r *http.Request) string {
 
 	// Default transmitter ID for demo purposes
 	return "default-transmitter"
+}
+
+// isDevMode checks if development mode is enabled
+func (h *Handlers) isDevMode(r *http.Request) bool {
+	// Check environment variable
+	if os.Getenv("DEV_DEBUG") == "true" {
+		return true
+	}
+
+	// Check request header
+	if r.Header.Get("X-Dev-Mode") == "true" {
+		return true
+	}
+
+	return false
 }
 
 // getBaseURL constructs the base URL from the request
