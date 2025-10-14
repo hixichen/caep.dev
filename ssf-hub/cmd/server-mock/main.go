@@ -15,7 +15,6 @@ import (
 	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/handlers"
 	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/pubsub"
 	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/registry"
-	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/pkg/api"
 )
 
 func main() {
@@ -53,28 +52,28 @@ func main() {
 	}
 
 	// Create HTTP handlers
-	config := &api.Config{
-		ServerPort: getEnvOrDefault("SERVER_PORT", "8080"),
-		LogLevel:   getEnvOrDefault("LOG_LEVEL", "debug"),
-		JWTSecret:  getEnvOrDefault("JWT_SECRET", "mock-jwt-secret-change-in-production"),
+	handlersConfig := &handlers.Config{
+		Logger:     logger,
+		Controller: broker,
+		Registry:   receiverRegistry,
 	}
 
-	httpHandlers := handlers.New(broker, receiverRegistry, logger)
+	httpHandlers := handlers.New(handlersConfig)
 
 	// Setup HTTP routes
 	mux := http.NewServeMux()
 
 	// SSF endpoints
-	mux.HandleFunc("POST /events", httpHandlers.ReceiveEvent)
-	mux.HandleFunc("GET /.well-known/ssf_configuration", httpHandlers.GetSSFConfiguration)
+	mux.HandleFunc("POST /events", httpHandlers.HandleEvents)
+	mux.HandleFunc("GET /.well-known/ssf_configuration", httpHandlers.HandleSSFConfiguration)
 
 	// Management API
-	mux.HandleFunc("GET /api/v1/receivers", httpHandlers.ListReceivers)
-	mux.HandleFunc("POST /api/v1/receivers", httpHandlers.RegisterReceiver)
-	mux.HandleFunc("PUT /api/v1/receivers/{id}", httpHandlers.UpdateReceiver)
-	mux.HandleFunc("DELETE /api/v1/receivers/{id}", httpHandlers.UnregisterReceiver)
-	mux.HandleFunc("GET /api/v1/receivers/{id}", httpHandlers.GetReceiver)
-	mux.HandleFunc("GET /api/v1/stats", httpHandlers.GetStats)
+	mux.HandleFunc("GET /api/v1/receivers", httpHandlers.HandleListReceivers)
+	mux.HandleFunc("POST /api/v1/receivers", httpHandlers.HandleRegisterReceiver)
+	mux.HandleFunc("PUT /api/v1/receivers/{id}", httpHandlers.HandleUpdateReceiver)
+	mux.HandleFunc("DELETE /api/v1/receivers/{id}", httpHandlers.HandleUnregisterReceiver)
+	mux.HandleFunc("GET /api/v1/receivers/{id}", httpHandlers.HandleGetReceiver)
+	mux.HandleFunc("GET /api/v1/stats", httpHandlers.HandleMetrics)
 
 	// Health and debug endpoints
 	mux.HandleFunc("GET /health", healthHandler)
@@ -83,8 +82,9 @@ func main() {
 	mux.HandleFunc("POST /debug/mock/clear", mockClearHandler(pubsubClient))
 
 	// Start HTTP server
+	serverPort := getEnvOrDefault("SERVER_PORT", "8080")
 	server := &http.Server{
-		Addr:         ":" + config.ServerPort,
+		Addr:         ":" + serverPort,
 		Handler:      mux,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
@@ -94,7 +94,7 @@ func main() {
 	// Start server in goroutine
 	go func() {
 		logger.Info("Starting HTTP server",
-			"port", config.ServerPort,
+			"port", serverPort,
 			"endpoints", []string{
 				"POST /events",
 				"GET /.well-known/ssf_configuration",
@@ -112,11 +112,11 @@ func main() {
 
 	// Print helpful startup info
 	fmt.Printf("\n🚀 SSF Hub Mock Server Started Successfully!\n\n")
-	fmt.Printf("📡 Server: http://localhost:%s\n", config.ServerPort)
-	fmt.Printf("🔧 Management API: http://localhost:%s/api/v1/receivers\n", config.ServerPort)
-	fmt.Printf("💡 Health Check: http://localhost:%s/health\n", config.ServerPort)
-	fmt.Printf("🐛 Mock Stats: http://localhost:%s/debug/mock/stats\n", config.ServerPort)
-	fmt.Printf("📋 SSF Config: http://localhost:%s/.well-known/ssf_configuration\n", config.ServerPort)
+	fmt.Printf("📡 Server: http://localhost:%s\n", serverPort)
+	fmt.Printf("🔧 Management API: http://localhost:%s/api/v1/receivers\n", serverPort)
+	fmt.Printf("💡 Health Check: http://localhost:%s/health\n", serverPort)
+	fmt.Printf("🐛 Mock Stats: http://localhost:%s/debug/mock/stats\n", serverPort)
+	fmt.Printf("📋 SSF Config: http://localhost:%s/.well-known/ssf_configuration\n", serverPort)
 	fmt.Printf("\n💻 No GCP service account needed - everything runs in memory!\n")
 	fmt.Printf("📖 Check local_development.md for testing examples\n\n")
 

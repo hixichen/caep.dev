@@ -69,8 +69,12 @@ clear_mock_state() {
 register_receiver() {
     print_step "Registering test receiver..."
 
+    # Use timestamp to make receiver ID unique
+    local timestamp=$(date +%s)
+    local receiver_id="test-receiver-$timestamp"
+
     local receiver_data='{
-        "id": "test-receiver",
+        "id": "'$receiver_id'",
         "name": "Test Receiver",
         "webhook_url": "'$WEBHOOK_URL'",
         "event_types": [
@@ -84,14 +88,17 @@ register_receiver() {
         }
     }'
 
-    local receiver_id=$(curl -s -X POST "$HUB_URL/api/v1/receivers" \
+    local response=$(curl -s -X POST "$HUB_URL/api/v1/receivers" \
         -H "Content-Type: application/json" \
-        -d "$receiver_data" | jq -r '.id // "error"')
+        -d "$receiver_data")
 
-    if [ "$receiver_id" = "test-receiver" ]; then
-        print_success "Receiver registered: $receiver_id"
+    local returned_id=$(echo "$response" | jq -r '.id // "error"')
+
+    if [ "$returned_id" = "$receiver_id" ]; then
+        print_success "Receiver registered: $returned_id"
     else
-        print_error "Failed to register receiver: $receiver_id"
+        print_error "Failed to register receiver: $returned_id"
+        echo "Response: $response"
         exit 1
     fi
 }
@@ -100,7 +107,10 @@ register_receiver() {
 send_test_event() {
     print_step "Sending test security event..."
 
-    local event_data='{
+    # Create a simple JWT with header.payload.signature format for testing
+    # In real usage, this would be a properly signed JWT
+    local header='{"alg":"none","typ":"JWT"}'
+    local payload='{
         "iss": "https://test-transmitter.example.com",
         "jti": "test-event-'$(date +%s)'",
         "iat": '$(date +%s)',
@@ -117,13 +127,18 @@ send_test_event() {
         }
     }'
 
-    # Send event (will likely fail parsing but will trigger mock processing)
-    curl -s -X POST "$HUB_URL/events" \
+    # Create a minimal JWT token (header.payload.signature format)
+    local encoded_header=$(echo -n "$header" | base64 | tr -d '=\n' | tr '+/' '-_')
+    local encoded_payload=$(echo -n "$payload" | base64 | tr -d '=\n' | tr '+/' '-_')
+    local jwt_token="${encoded_header}.${encoded_payload}."
+
+    # Send JWT token
+    local response=$(curl -s -X POST "$HUB_URL/events" \
         -H "Content-Type: application/secevent+jwt" \
         -H "X-Transmitter-ID: test-transmitter" \
-        -d "$event_data" > /dev/null
+        -d "$jwt_token")
 
-    print_success "Test event sent"
+    print_success "Test event sent (JWT format)"
 }
 
 # Check mock statistics
@@ -170,7 +185,8 @@ check_mock_stats() {
 check_receivers() {
     print_step "Checking registered receivers..."
 
-    local receivers=$(curl -s "$HUB_URL/api/v1/receivers")
+    local receivers_response=$(curl -s "$HUB_URL/api/v1/receivers")
+    local receivers=$(echo "$receivers_response" | jq '.receivers // []')
     local receiver_count=$(echo "$receivers" | jq 'length')
 
     if [ "$receiver_count" -gt 0 ]; then
@@ -178,6 +194,7 @@ check_receivers() {
         echo "$receivers" | jq '.[] | {id: .id, webhook_url: .webhook_url, status: .status}'
     else
         print_error "❌ No receivers found"
+        echo "Full response: $receivers_response"
     fi
 }
 
