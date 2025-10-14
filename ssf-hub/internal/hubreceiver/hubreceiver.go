@@ -13,14 +13,14 @@ import (
 // HubReceiver implements the hub as a receiver of its own unified topic
 // This aligns the hub with the receiver model while handling internal distribution
 type HubReceiver struct {
-	hubInstanceID   string
+	hubInstanceID    string
 	subscriptionName string
-	pubsubClient    PubSubClient
-	distributor     *distributor.EventDistributor
-	logger          *slog.Logger
-	running         bool
-	stopChan        chan struct{}
-	metrics         *HubReceiverMetrics
+	pubsubClient     PubSubClient
+	distributor      *distributor.EventDistributor
+	logger           *slog.Logger
+	running          bool
+	stopChan         chan struct{}
+	metrics          *HubReceiverMetrics
 }
 
 // PubSubClient interface for hub receiver operations
@@ -93,6 +93,11 @@ func (h *HubReceiver) Start(ctx context.Context) error {
 		"subscription", h.subscriptionName)
 
 	return nil
+}
+
+// SetPubSubClient updates the PubSub client (used for testing)
+func (h *HubReceiver) SetPubSubClient(client PubSubClient) {
+	h.pubsubClient = client
 }
 
 // Stop gracefully stops the hub receiver

@@ -24,23 +24,23 @@ type ServerConfig struct {
 
 // PubSubConfig contains Google Cloud Pub/Sub configuration
 type PubSubConfig struct {
-	ProjectID               string `yaml:"project_id" json:"project_id"`
-	TopicPrefix             string `yaml:"topic_prefix" json:"topic_prefix"`
-	CredentialsFile         string `yaml:"credentials_file,omitempty" json:"credentials_file,omitempty"`
-	MaxConcurrentHandlers   int    `yaml:"max_concurrent_handlers,omitempty" json:"max_concurrent_handlers,omitempty"`
-	MaxOutstandingMessages  int    `yaml:"max_outstanding_messages,omitempty" json:"max_outstanding_messages,omitempty"`
-	MaxOutstandingBytes     int    `yaml:"max_outstanding_bytes,omitempty" json:"max_outstanding_bytes,omitempty"`
-	EnableMessageOrdering   bool   `yaml:"enable_message_ordering,omitempty" json:"enable_message_ordering,omitempty"`
-	AckDeadline             int    `yaml:"ack_deadline,omitempty" json:"ack_deadline,omitempty"`     // seconds
-	RetentionDuration       int    `yaml:"retention_duration,omitempty" json:"retention_duration,omitempty"` // hours
+	ProjectID              string `yaml:"project_id" json:"project_id"`
+	TopicPrefix            string `yaml:"topic_prefix" json:"topic_prefix"`
+	CredentialsFile        string `yaml:"credentials_file,omitempty" json:"credentials_file,omitempty"`
+	MaxConcurrentHandlers  int    `yaml:"max_concurrent_handlers,omitempty" json:"max_concurrent_handlers,omitempty"`
+	MaxOutstandingMessages int    `yaml:"max_outstanding_messages,omitempty" json:"max_outstanding_messages,omitempty"`
+	MaxOutstandingBytes    int    `yaml:"max_outstanding_bytes,omitempty" json:"max_outstanding_bytes,omitempty"`
+	EnableMessageOrdering  bool   `yaml:"enable_message_ordering,omitempty" json:"enable_message_ordering,omitempty"`
+	AckDeadline            int    `yaml:"ack_deadline,omitempty" json:"ack_deadline,omitempty"`             // seconds
+	RetentionDuration      int    `yaml:"retention_duration,omitempty" json:"retention_duration,omitempty"` // hours
 }
 
 // AuthConfig contains authentication configuration
 type AuthConfig struct {
-	JWTSecret        string `yaml:"jwt_secret" json:"jwt_secret"`
-	TokenExpiration  int    `yaml:"token_expiration,omitempty" json:"token_expiration,omitempty"` // hours
-	RequireAuth      bool   `yaml:"require_auth,omitempty" json:"require_auth,omitempty"`
-	AllowedIssuers   []string `yaml:"allowed_issuers,omitempty" json:"allowed_issuers,omitempty"`
+	JWTSecret       string   `yaml:"jwt_secret" json:"jwt_secret"`
+	TokenExpiration int      `yaml:"token_expiration,omitempty" json:"token_expiration,omitempty"` // hours
+	RequireAuth     bool     `yaml:"require_auth,omitempty" json:"require_auth,omitempty"`
+	AllowedIssuers  []string `yaml:"allowed_issuers,omitempty" json:"allowed_issuers,omitempty"`
 }
 
 // LoggingConfig contains logging configuration

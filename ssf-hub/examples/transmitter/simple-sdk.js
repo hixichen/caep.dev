@@ -82,6 +82,271 @@ class SSFTransmitter {
   }
 
   /**
+   * Send a token claims change event
+   */
+  async sendTokenClaimsChange(userEmail, previousClaims, currentClaims) {
+    const event = {
+      iss: `https://${this.transmitterId}.example.com`,
+      jti: this._generateEventId(),
+      iat: Math.floor(Date.now() / 1000),
+      events: {
+        'https://schemas.openid.net/secevent/caep/event-type/token-claims-change': {
+          subject: {
+            format: 'email',
+            email: userEmail
+          },
+          previous_claims: previousClaims,
+          current_claims: currentClaims
+        }
+      }
+    };
+
+    return this._sendEvent(event);
+  }
+
+  /**
+   * Send an account credential change required event
+   */
+  async sendAccountCredentialChangeRequired(userEmail, reason = 'security_policy') {
+    const event = {
+      iss: `https://${this.transmitterId}.example.com`,
+      jti: this._generateEventId(),
+      iat: Math.floor(Date.now() / 1000),
+      events: {
+        'https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required': {
+          subject: {
+            format: 'email',
+            email: userEmail
+          },
+          reason: reason
+        }
+      }
+    };
+
+    return this._sendEvent(event);
+  }
+
+  /**
+   * Send an account purged event
+   */
+  async sendAccountPurged(userEmail, reason = 'policy_violation') {
+    const event = {
+      iss: `https://${this.transmitterId}.example.com`,
+      jti: this._generateEventId(),
+      iat: Math.floor(Date.now() / 1000),
+      events: {
+        'https://schemas.openid.net/secevent/risc/event-type/account-purged': {
+          subject: {
+            format: 'email',
+            email: userEmail
+          },
+          reason: reason
+        }
+      }
+    };
+
+    return this._sendEvent(event);
+  }
+
+  /**
+   * Send an account disabled event
+   */
+  async sendAccountDisabled(userEmail, reason = 'administrative') {
+    const event = {
+      iss: `https://${this.transmitterId}.example.com`,
+      jti: this._generateEventId(),
+      iat: Math.floor(Date.now() / 1000),
+      events: {
+        'https://schemas.openid.net/secevent/risc/event-type/account-disabled': {
+          subject: {
+            format: 'email',
+            email: userEmail
+          },
+          reason: reason
+        }
+      }
+    };
+
+    return this._sendEvent(event);
+  }
+
+  /**
+   * Send an account enabled event
+   */
+  async sendAccountEnabled(userEmail, reason = 'administrative') {
+    const event = {
+      iss: `https://${this.transmitterId}.example.com`,
+      jti: this._generateEventId(),
+      iat: Math.floor(Date.now() / 1000),
+      events: {
+        'https://schemas.openid.net/secevent/risc/event-type/account-enabled': {
+          subject: {
+            format: 'email',
+            email: userEmail
+          },
+          reason: reason
+        }
+      }
+    };
+
+    return this._sendEvent(event);
+  }
+
+  /**
+   * Send an identifier changed event
+   */
+  async sendIdentifierChanged(oldEmail, newEmail, changeType = 'user_initiated') {
+    const event = {
+      iss: `https://${this.transmitterId}.example.com`,
+      jti: this._generateEventId(),
+      iat: Math.floor(Date.now() / 1000),
+      events: {
+        'https://schemas.openid.net/secevent/risc/event-type/identifier-changed': {
+          subject: {
+            format: 'email',
+            email: oldEmail
+          },
+          new_value: newEmail,
+          change_type: changeType
+        }
+      }
+    };
+
+    return this._sendEvent(event);
+  }
+
+  /**
+   * Send an identifier recycled event
+   */
+  async sendIdentifierRecycled(userEmail, previousSubject) {
+    const event = {
+      iss: `https://${this.transmitterId}.example.com`,
+      jti: this._generateEventId(),
+      iat: Math.floor(Date.now() / 1000),
+      events: {
+        'https://schemas.openid.net/secevent/risc/event-type/identifier-recycled': {
+          subject: {
+            format: 'email',
+            email: userEmail
+          },
+          previous_subject: previousSubject
+        }
+      }
+    };
+
+    return this._sendEvent(event);
+  }
+
+  /**
+   * Send a credential compromise event
+   */
+  async sendCredentialCompromise(userEmail, credentialType, reasonCode = 'data_breach') {
+    const event = {
+      iss: `https://${this.transmitterId}.example.com`,
+      jti: this._generateEventId(),
+      iat: Math.floor(Date.now() / 1000),
+      events: {
+        'https://schemas.openid.net/secevent/risc/event-type/credential-compromise': {
+          subject: {
+            format: 'email',
+            email: userEmail
+          },
+          credential_type: credentialType,
+          reason_code: reasonCode
+        }
+      }
+    };
+
+    return this._sendEvent(event);
+  }
+
+  /**
+   * Send an opt-in event
+   */
+  async sendOptIn(userEmail) {
+    const event = {
+      iss: `https://${this.transmitterId}.example.com`,
+      jti: this._generateEventId(),
+      iat: Math.floor(Date.now() / 1000),
+      events: {
+        'https://schemas.openid.net/secevent/risc/event-type/opt-in': {
+          subject: {
+            format: 'email',
+            email: userEmail
+          }
+        }
+      }
+    };
+
+    return this._sendEvent(event);
+  }
+
+  /**
+   * Send an opt-out event
+   */
+  async sendOptOut(userEmail) {
+    const event = {
+      iss: `https://${this.transmitterId}.example.com`,
+      jti: this._generateEventId(),
+      iat: Math.floor(Date.now() / 1000),
+      events: {
+        'https://schemas.openid.net/secevent/risc/event-type/opt-out': {
+          subject: {
+            format: 'email',
+            email: userEmail
+          }
+        }
+      }
+    };
+
+    return this._sendEvent(event);
+  }
+
+  /**
+   * Send a recovery activated event
+   */
+  async sendRecoveryActivated(userEmail, recoveryMethod = 'email') {
+    const event = {
+      iss: `https://${this.transmitterId}.example.com`,
+      jti: this._generateEventId(),
+      iat: Math.floor(Date.now() / 1000),
+      events: {
+        'https://schemas.openid.net/secevent/risc/event-type/recovery-activated': {
+          subject: {
+            format: 'email',
+            email: userEmail
+          },
+          recovery_method: recoveryMethod
+        }
+      }
+    };
+
+    return this._sendEvent(event);
+  }
+
+  /**
+   * Send a recovery information changed event
+   */
+  async sendRecoveryInformationChanged(userEmail, changedField = 'recovery_email') {
+    const event = {
+      iss: `https://${this.transmitterId}.example.com`,
+      jti: this._generateEventId(),
+      iat: Math.floor(Date.now() / 1000),
+      events: {
+        'https://schemas.openid.net/secevent/risc/event-type/recovery-information-changed': {
+          subject: {
+            format: 'email',
+            email: userEmail
+          },
+          changed_field: changedField
+        }
+      }
+    };
+
+    return this._sendEvent(event);
+  }
+
+  /**
    * Send a custom event
    */
   async sendCustomEvent(eventType, eventData, subject) {

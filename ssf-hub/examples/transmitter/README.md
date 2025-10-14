@@ -2,6 +2,32 @@
 
 This directory contains examples for transmitters to send security events to the SSF Hub.
 
+**🎯 Complete Standards Coverage**: This SDK now supports all standardized CAEP, RISC, and SSF event types from the [Shared Signals Guide](https://sharedsignals.guide/#eventdefinitions).
+
+## SDK Methods Available
+
+### CAEP Events
+- `sendSessionRevoked(userEmail, reason)`
+- `sendCredentialChange(userEmail, changeType)`
+- `sendAssuranceLevelChange(userEmail, previousLevel, newLevel)`
+- `sendTokenClaimsChange(userEmail, previousClaims, currentClaims)` ✨ NEW
+
+### RISC Events
+- `sendAccountCredentialChangeRequired(userEmail, reason)` ✨ NEW
+- `sendAccountPurged(userEmail, reason)` ✨ NEW
+- `sendAccountDisabled(userEmail, reason)` ✨ NEW
+- `sendAccountEnabled(userEmail, reason)` ✨ NEW
+- `sendIdentifierChanged(oldEmail, newEmail, changeType)` ✨ NEW
+- `sendIdentifierRecycled(userEmail, previousSubject)` ✨ NEW
+- `sendCredentialCompromise(userEmail, credentialType, reasonCode)` ✨ NEW
+- `sendOptIn(userEmail)` ✨ NEW
+- `sendOptOut(userEmail)` ✨ NEW
+- `sendRecoveryActivated(userEmail, recoveryMethod)` ✨ NEW
+- `sendRecoveryInformationChanged(userEmail, changedField)` ✨ NEW
+
+### Generic
+- `sendCustomEvent(eventType, eventData, subject)` - For any custom event type
+
 ## Quick Start with curl
 
 ### 1. Basic Event Submission
@@ -75,7 +101,9 @@ curl -X POST http://localhost:8080/events \
 
 ## Event Types
 
-### Session Revoked
+### CAEP Events (Continuous Access Evaluation Profile)
+
+#### Session Revoked
 ```json
 {
   "https://schemas.openid.net/secevent/caep/event-type/session-revoked": {
@@ -88,7 +116,7 @@ curl -X POST http://localhost:8080/events \
 }
 ```
 
-### Credential Change
+#### Credential Change
 ```json
 {
   "https://schemas.openid.net/secevent/caep/event-type/credential-change": {
@@ -101,7 +129,7 @@ curl -X POST http://localhost:8080/events \
 }
 ```
 
-### Assurance Level Change
+#### Assurance Level Change
 ```json
 {
   "https://schemas.openid.net/secevent/caep/event-type/assurance-level-change": {
@@ -111,6 +139,201 @@ curl -X POST http://localhost:8080/events \
     },
     "previous_level": "nist-aal-1",
     "new_level": "nist-aal-2"
+  }
+}
+```
+
+#### Device Compliance Change
+```json
+{
+  "https://schemas.openid.net/secevent/caep/event-type/device-compliance-change": {
+    "subject": {
+      "format": "email",
+      "email": "user@example.com"
+    },
+    "current_status": "compliant",
+    "previous_status": "non_compliant"
+  }
+}
+```
+
+#### Token Claims Change
+```json
+{
+  "https://schemas.openid.net/secevent/caep/event-type/token-claims-change": {
+    "subject": {
+      "format": "email",
+      "email": "user@example.com"
+    },
+    "previous_claims": {
+      "role": "user"
+    },
+    "current_claims": {
+      "role": "admin"
+    }
+  }
+}
+```
+
+### RISC Events (Risk Incident Sharing and Coordination)
+
+#### Account Credential Change Required
+```json
+{
+  "https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required": {
+    "subject": {
+      "format": "email",
+      "email": "user@example.com"
+    },
+    "reason": "security_policy"
+  }
+}
+```
+
+#### Account Purged
+```json
+{
+  "https://schemas.openid.net/secevent/risc/event-type/account-purged": {
+    "subject": {
+      "format": "email",
+      "email": "user@example.com"
+    },
+    "reason": "policy_violation"
+  }
+}
+```
+
+#### Account Disabled
+```json
+{
+  "https://schemas.openid.net/secevent/risc/event-type/account-disabled": {
+    "subject": {
+      "format": "email",
+      "email": "user@example.com"
+    },
+    "reason": "administrative"
+  }
+}
+```
+
+#### Account Enabled
+```json
+{
+  "https://schemas.openid.net/secevent/risc/event-type/account-enabled": {
+    "subject": {
+      "format": "email",
+      "email": "user@example.com"
+    },
+    "reason": "administrative"
+  }
+}
+```
+
+#### Identifier Changed
+```json
+{
+  "https://schemas.openid.net/secevent/risc/event-type/identifier-changed": {
+    "subject": {
+      "format": "email",
+      "email": "old-email@example.com"
+    },
+    "new_value": "new-email@example.com",
+    "change_type": "user_initiated"
+  }
+}
+```
+
+#### Identifier Recycled
+```json
+{
+  "https://schemas.openid.net/secevent/risc/event-type/identifier-recycled": {
+    "subject": {
+      "format": "email",
+      "email": "user@example.com"
+    },
+    "previous_subject": {
+      "format": "iss_sub",
+      "iss": "https://old-provider.example.com",
+      "sub": "old-user-123"
+    }
+  }
+}
+```
+
+#### Credential Compromise
+```json
+{
+  "https://schemas.openid.net/secevent/risc/event-type/credential-compromise": {
+    "subject": {
+      "format": "email",
+      "email": "user@example.com"
+    },
+    "credential_type": "password",
+    "reason_code": "data_breach"
+  }
+}
+```
+
+#### Opt In
+```json
+{
+  "https://schemas.openid.net/secevent/risc/event-type/opt-in": {
+    "subject": {
+      "format": "email",
+      "email": "user@example.com"
+    }
+  }
+}
+```
+
+#### Opt Out
+```json
+{
+  "https://schemas.openid.net/secevent/risc/event-type/opt-out": {
+    "subject": {
+      "format": "email",
+      "email": "user@example.com"
+    }
+  }
+}
+```
+
+#### Recovery Activated
+```json
+{
+  "https://schemas.openid.net/secevent/risc/event-type/recovery-activated": {
+    "subject": {
+      "format": "email",
+      "email": "user@example.com"
+    },
+    "recovery_method": "email"
+  }
+}
+```
+
+#### Recovery Information Changed
+```json
+{
+  "https://schemas.openid.net/secevent/risc/event-type/recovery-information-changed": {
+    "subject": {
+      "format": "email",
+      "email": "user@example.com"
+    },
+    "changed_field": "recovery_email"
+  }
+}
+```
+
+### SSF Events (Shared Signals Framework)
+
+#### Verification
+```json
+{
+  "https://schemas.openid.net/secevent/ssf/event-type/verification": {
+    "subject": {
+      "format": "email",
+      "email": "user@example.com"
+    }
   }
 }
 ```
@@ -155,7 +378,15 @@ node poc-demo.js --bearer-token
 
 # Simple header mode
 node poc-demo.js
+
+# Demonstrate ALL 17 standardized event types
+DEV_DEBUG=true node poc-demo.js --all-events
+
+# Full demo with bearer token and all events
+node poc-demo.js --bearer-token --all-events
 ```
+
+The `--all-events` flag will demonstrate all CAEP, RISC, and SSF event types supported by the hub, giving you a comprehensive view of the complete standards compliance.
 
 ### Generate Bearer Tokens for Testing
 

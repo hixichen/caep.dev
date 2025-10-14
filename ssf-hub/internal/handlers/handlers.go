@@ -15,24 +15,24 @@ import (
 
 // Config contains configuration for handlers
 type Config struct {
-	Logger   *slog.Logger
+	Logger     *slog.Logger
 	Controller *controller.Broker
-	Registry registry.Registry
+	Registry   registry.Registry
 }
 
 // Handlers contains all HTTP handlers for the SSF hub
 type Handlers struct {
-	logger   *slog.Logger
+	logger     *slog.Logger
 	controller *controller.Broker
-	registry registry.Registry
+	registry   registry.Registry
 }
 
 // New creates new handlers
 func New(config *Config) *Handlers {
 	return &Handlers{
-		logger:   config.Logger,
+		logger:     config.Logger,
 		controller: config.Controller,
-		registry: config.Registry,
+		registry:   config.Registry,
 	}
 }
 
@@ -53,7 +53,7 @@ func (h *Handlers) HandleEvents(w http.ResponseWriter, r *http.Request) {
 		h.logger.Error("No transmitter ID found in request",
 			"headers", map[string]string{
 				"X-Transmitter-ID": r.Header.Get("X-Transmitter-ID"),
-				"Authorization": r.Header.Get("Authorization"),
+				"Authorization":    r.Header.Get("Authorization"),
 			},
 			"query_params", r.URL.Query())
 		h.writeErrorResponse(w, http.StatusBadRequest, "Missing transmitter identification")
@@ -139,9 +139,9 @@ func (h *Handlers) HandleSSFConfiguration(w http.ResponseWriter, r *http.Request
 			models.EventTypeDeviceComplianceChange,
 			models.EventTypeVerification,
 		},
-		"events_delivery_endpoint":    fmt.Sprintf("%s/events", baseURL),
-		"management_endpoint":         fmt.Sprintf("%s/api/v1", baseURL),
-		"registration_endpoint":       fmt.Sprintf("%s/api/v1/receivers", baseURL),
+		"events_delivery_endpoint": fmt.Sprintf("%s/events", baseURL),
+		"management_endpoint":      fmt.Sprintf("%s/api/v1", baseURL),
+		"registration_endpoint":    fmt.Sprintf("%s/api/v1/receivers", baseURL),
 		"subject_formats_supported": []string{
 			models.SubjectFormatEmail,
 			models.SubjectFormatPhoneNumber,
@@ -151,8 +151,8 @@ func (h *Handlers) HandleSSFConfiguration(w http.ResponseWriter, r *http.Request
 			models.SubjectFormatURI,
 		},
 		"specification_version": "1.0",
-		"vendor":               "SSF Hub Service",
-		"version":              "1.0.0",
+		"vendor":                "SSF Hub Service",
+		"version":               "1.0.0",
 	}
 
 	h.writeJSONResponse(w, http.StatusOK, config)
@@ -175,9 +175,9 @@ func (h *Handlers) HandleReady(w http.ResponseWriter, r *http.Request) {
 	receiverCount := h.registry.Count()
 
 	response := map[string]interface{}{
-		"status":           "ready",
-		"receiver_count":   receiverCount,
-		"timestamp":        fmt.Sprintf("%d", 1234567890), // Use actual timestamp
+		"status":         "ready",
+		"receiver_count": receiverCount,
+		"timestamp":      fmt.Sprintf("%d", 1234567890), // Use actual timestamp
 	}
 
 	h.writeJSONResponse(w, http.StatusOK, response)
@@ -501,8 +501,8 @@ func (h *Handlers) writeJSONResponse(w http.ResponseWriter, statusCode int, data
 // writeErrorResponse writes an error response
 func (h *Handlers) writeErrorResponse(w http.ResponseWriter, statusCode int, message string) {
 	response := map[string]interface{}{
-		"error":   message,
-		"status":  statusCode,
+		"error":  message,
+		"status": statusCode,
 	}
 
 	h.writeJSONResponse(w, statusCode, response)

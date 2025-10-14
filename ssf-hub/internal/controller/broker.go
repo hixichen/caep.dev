@@ -380,9 +380,9 @@ func (b *Broker) GetBrokerStats() (*BrokerStats, error) {
 	b.logger.Debug("Retrieved receivers for statistics", "receiver_count", len(receivers))
 
 	stats := &BrokerStats{
-		TotalReceivers: len(receivers),
+		TotalReceivers:    len(receivers),
 		ReceiversByStatus: b.registry.CountByStatus(),
-		EventTypeStats: make(map[string]int),
+		EventTypeStats:    make(map[string]int),
 	}
 
 	// Calculate event type statistics
@@ -406,11 +406,10 @@ func (b *Broker) GetBrokerStats() (*BrokerStats, error) {
 
 // BrokerStats contains broker statistics
 type BrokerStats struct {
-	TotalReceivers    int                            `json:"total_receivers"`
-	ReceiversByStatus map[models.ReceiverStatus]int  `json:"receivers_by_status"`
-	EventTypeStats    map[string]int                 `json:"event_type_stats"`
+	TotalReceivers    int                           `json:"total_receivers"`
+	ReceiversByStatus map[models.ReceiverStatus]int `json:"receivers_by_status"`
+	EventTypeStats    map[string]int                `json:"event_type_stats"`
 }
-
 
 // convertToSecurityEvent converts a parsed SEC event to internal event model
 func (b *Broker) convertToSecurityEvent(secEvent *token.SecEvent, rawSET string, transmitterID string) *models.SecurityEvent {

@@ -250,7 +250,7 @@ func (c *Client) GetUnifiedTopicInfo(ctx context.Context) (*TopicInfo, error) {
 
 // TopicInfo contains information about the unified topic
 type TopicInfo struct {
-	Name   string                 `json:"name"`
-	Exists bool                   `json:"exists"`
-	Config *pubsub.TopicConfig    `json:"config,omitempty"`
+	Name   string              `json:"name"`
+	Exists bool                `json:"exists"`
+	Config *pubsub.TopicConfig `json:"config,omitempty"`
 }

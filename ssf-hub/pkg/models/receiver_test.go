@@ -8,10 +8,10 @@ import (
 
 func TestReceiver_Validate(t *testing.T) {
 	tests := []struct {
-		name    string
+		name     string
 		receiver *Receiver
-		wantErr bool
-		errMsg  string
+		wantErr  bool
+		errMsg   string
 	}{
 		{
 			name: "valid webhook receiver",
@@ -23,7 +23,7 @@ func TestReceiver_Validate(t *testing.T) {
 					Method: DeliveryMethodWebhook,
 				},
 				Auth: AuthConfig{
-					Type: AuthTypeBearer,
+					Type:  AuthTypeBearer,
 					Token: "test-token",
 				},
 			},

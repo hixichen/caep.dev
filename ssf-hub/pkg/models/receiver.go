@@ -23,21 +23,21 @@ type Receiver struct {
 
 // DeliveryConfig specifies how events should be delivered to the receiver
 type DeliveryConfig struct {
-	Method      DeliveryMethod `json:"method" yaml:"method"`                             // webhook only (hub manages all backend delivery)
-	BatchSize   int            `json:"batch_size,omitempty" yaml:"batch_size,omitempty"`
-	Timeout     time.Duration  `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	Method    DeliveryMethod `json:"method" yaml:"method"` // webhook only (hub manages all backend delivery)
+	BatchSize int            `json:"batch_size,omitempty" yaml:"batch_size,omitempty"`
+	Timeout   time.Duration  `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 }
 
 // AuthConfig specifies authentication for webhook delivery
 type AuthConfig struct {
-	Type         AuthType `json:"type" yaml:"type"`                                   // bearer, oauth2, hmac, none
-	Token        string   `json:"token,omitempty" yaml:"token,omitempty"`             // Bearer token
-	ClientID     string   `json:"client_id,omitempty" yaml:"client_id,omitempty"`     // OAuth2
+	Type         AuthType `json:"type" yaml:"type"`                                       // bearer, oauth2, hmac, none
+	Token        string   `json:"token,omitempty" yaml:"token,omitempty"`                 // Bearer token
+	ClientID     string   `json:"client_id,omitempty" yaml:"client_id,omitempty"`         // OAuth2
 	ClientSecret string   `json:"client_secret,omitempty" yaml:"client_secret,omitempty"` // OAuth2
-	TokenURL     string   `json:"token_url,omitempty" yaml:"token_url,omitempty"`     // OAuth2
-	Scopes       []string `json:"scopes,omitempty" yaml:"scopes,omitempty"`           // OAuth2
-	Secret       string   `json:"secret,omitempty" yaml:"secret,omitempty"`           // HMAC
-	Algorithm    string   `json:"algorithm,omitempty" yaml:"algorithm,omitempty"`     // HMAC (sha256, sha512)
+	TokenURL     string   `json:"token_url,omitempty" yaml:"token_url,omitempty"`         // OAuth2
+	Scopes       []string `json:"scopes,omitempty" yaml:"scopes,omitempty"`               // OAuth2
+	Secret       string   `json:"secret,omitempty" yaml:"secret,omitempty"`               // HMAC
+	Algorithm    string   `json:"algorithm,omitempty" yaml:"algorithm,omitempty"`         // HMAC (sha256, sha512)
 }
 
 // EventFilter allows receivers to filter events
@@ -58,13 +58,13 @@ type RetryConfig struct {
 
 // ReceiverMetadata contains metadata about the receiver
 type ReceiverMetadata struct {
-	CreatedAt         time.Time `json:"created_at" yaml:"created_at"`
-	UpdatedAt         time.Time `json:"updated_at" yaml:"updated_at"`
-	LastEventAt       time.Time `json:"last_event_at,omitempty" yaml:"last_event_at,omitempty"`
-	EventsReceived    int64     `json:"events_received" yaml:"events_received"`
-	EventsDelivered   int64     `json:"events_delivered" yaml:"events_delivered"`
-	EventsFailed      int64     `json:"events_failed" yaml:"events_failed"`
-	LastDeliveryError string    `json:"last_delivery_error,omitempty" yaml:"last_delivery_error,omitempty"`
+	CreatedAt         time.Time         `json:"created_at" yaml:"created_at"`
+	UpdatedAt         time.Time         `json:"updated_at" yaml:"updated_at"`
+	LastEventAt       time.Time         `json:"last_event_at,omitempty" yaml:"last_event_at,omitempty"`
+	EventsReceived    int64             `json:"events_received" yaml:"events_received"`
+	EventsDelivered   int64             `json:"events_delivered" yaml:"events_delivered"`
+	EventsFailed      int64             `json:"events_failed" yaml:"events_failed"`
+	LastDeliveryError string            `json:"last_delivery_error,omitempty" yaml:"last_delivery_error,omitempty"`
 	Tags              map[string]string `json:"tags,omitempty" yaml:"tags,omitempty"`
 }
 
@@ -106,15 +106,15 @@ const (
 
 // ReceiverRequest represents a request to register or update a receiver
 type ReceiverRequest struct {
-	ID          string         `json:"id"`
-	Name        string         `json:"name,omitempty"`
-	Description string         `json:"description,omitempty"`
-	WebhookURL  string         `json:"webhook_url,omitempty"`
-	EventTypes  []string       `json:"event_types"`
-	Delivery    DeliveryConfig `json:"delivery"`
-	Auth        AuthConfig     `json:"auth,omitempty"`
-	Filters     []EventFilter  `json:"filters,omitempty"`
-	Retry       RetryConfig    `json:"retry,omitempty"`
+	ID          string            `json:"id"`
+	Name        string            `json:"name,omitempty"`
+	Description string            `json:"description,omitempty"`
+	WebhookURL  string            `json:"webhook_url,omitempty"`
+	EventTypes  []string          `json:"event_types"`
+	Delivery    DeliveryConfig    `json:"delivery"`
+	Auth        AuthConfig        `json:"auth,omitempty"`
+	Filters     []EventFilter     `json:"filters,omitempty"`
+	Retry       RetryConfig       `json:"retry,omitempty"`
 	Tags        map[string]string `json:"tags,omitempty"`
 }
 

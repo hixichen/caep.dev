@@ -9,48 +9,48 @@ import (
 
 // SecurityEvent represents a processed security event ready for distribution
 type SecurityEvent struct {
-	ID            string            `json:"id"`                      // Unique event ID (JTI)
-	Type          string            `json:"type"`                    // Event type URI
-	Source        string            `json:"source"`                  // Source transmitter/issuer
-	SpecVersion   string            `json:"spec_version,omitempty"`  // SSF spec version
-	Time          time.Time         `json:"time"`                    // Event timestamp
-	Subject       Subject           `json:"subject"`                 // Event subject
-	Data          map[string]interface{} `json:"data"`           // Event-specific data
-	Extensions    map[string]interface{} `json:"extensions,omitempty"` // Custom extensions
-	Metadata      EventMetadata     `json:"metadata"`                // Processing metadata
+	ID          string                 `json:"id"`                     // Unique event ID (JTI)
+	Type        string                 `json:"type"`                   // Event type URI
+	Source      string                 `json:"source"`                 // Source transmitter/issuer
+	SpecVersion string                 `json:"spec_version,omitempty"` // SSF spec version
+	Time        time.Time              `json:"time"`                   // Event timestamp
+	Subject     Subject                `json:"subject"`                // Event subject
+	Data        map[string]interface{} `json:"data"`                   // Event-specific data
+	Extensions  map[string]interface{} `json:"extensions,omitempty"`   // Custom extensions
+	Metadata    EventMetadata          `json:"metadata"`               // Processing metadata
 }
 
 // Subject represents the subject of a security event
 type Subject struct {
-	Format     string                 `json:"format"`               // Subject format (email, phone, iss_sub, etc.)
-	Identifier string                 `json:"identifier"`           // Subject identifier
-	Claims     map[string]interface{} `json:"claims,omitempty"`     // Additional subject claims
+	Format     string                 `json:"format"`           // Subject format (email, phone, iss_sub, etc.)
+	Identifier string                 `json:"identifier"`       // Subject identifier
+	Claims     map[string]interface{} `json:"claims,omitempty"` // Additional subject claims
 }
 
 // EventMetadata contains metadata about event processing
 type EventMetadata struct {
-	ReceivedAt    time.Time         `json:"received_at"`             // When hub received the event
-	ProcessedAt   time.Time         `json:"processed_at"`            // When hub processed the event
-	TransmitterID string            `json:"transmitter_id"`          // ID of the transmitter
-	RawSET        string            `json:"raw_set,omitempty"`       // Original SET token
-	ProcessingID  string            `json:"processing_id"`           // Unique processing ID
-	Tags          map[string]string `json:"tags,omitempty"`          // Processing tags
+	ReceivedAt    time.Time         `json:"received_at"`       // When hub received the event
+	ProcessedAt   time.Time         `json:"processed_at"`      // When hub processed the event
+	TransmitterID string            `json:"transmitter_id"`    // ID of the transmitter
+	RawSET        string            `json:"raw_set,omitempty"` // Original SET token
+	ProcessingID  string            `json:"processing_id"`     // Unique processing ID
+	Tags          map[string]string `json:"tags,omitempty"`    // Processing tags
 }
 
 // EventDelivery represents an event delivery attempt to a receiver
 type EventDelivery struct {
-	DeliveryID    string              `json:"delivery_id"`
-	ReceiverID    string              `json:"receiver_id"`
-	EventID       string              `json:"event_id"`
-	Attempt       int                 `json:"attempt"`
-	Status        DeliveryStatus      `json:"status"`
-	DeliveredAt   time.Time           `json:"delivered_at,omitempty"`
-	ErrorMessage  string              `json:"error_message,omitempty"`
-	ResponseCode  int                 `json:"response_code,omitempty"`
-	ResponseBody  string              `json:"response_body,omitempty"`
-	Duration      time.Duration       `json:"duration,omitempty"`
-	NextRetryAt   time.Time           `json:"next_retry_at,omitempty"`
-	Metadata      map[string]string   `json:"metadata,omitempty"`
+	DeliveryID   string            `json:"delivery_id"`
+	ReceiverID   string            `json:"receiver_id"`
+	EventID      string            `json:"event_id"`
+	Attempt      int               `json:"attempt"`
+	Status       DeliveryStatus    `json:"status"`
+	DeliveredAt  time.Time         `json:"delivered_at,omitempty"`
+	ErrorMessage string            `json:"error_message,omitempty"`
+	ResponseCode int               `json:"response_code,omitempty"`
+	ResponseBody string            `json:"response_body,omitempty"`
+	Duration     time.Duration     `json:"duration,omitempty"`
+	NextRetryAt  time.Time         `json:"next_retry_at,omitempty"`
+	Metadata     map[string]string `json:"metadata,omitempty"`
 }
 
 // DeliveryStatus represents the status of an event delivery
@@ -66,11 +66,28 @@ const (
 
 // Common event types
 const (
+	// CAEP Events - Continuous Access Evaluation Profile
 	EventTypeSessionRevoked         = "https://schemas.openid.net/secevent/caep/event-type/session-revoked"
 	EventTypeAssuranceLevelChange   = "https://schemas.openid.net/secevent/caep/event-type/assurance-level-change"
 	EventTypeCredentialChange       = "https://schemas.openid.net/secevent/caep/event-type/credential-change"
 	EventTypeDeviceComplianceChange = "https://schemas.openid.net/secevent/caep/event-type/device-compliance-change"
-	EventTypeVerification           = "https://schemas.openid.net/secevent/ssf/event-type/verification"
+	EventTypeTokenClaimsChange      = "https://schemas.openid.net/secevent/caep/event-type/token-claims-change"
+
+	// RISC Events - Risk Incident Sharing and Coordination
+	EventTypeAccountCredentialChangeRequired = "https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required"
+	EventTypeAccountPurged                   = "https://schemas.openid.net/secevent/risc/event-type/account-purged"
+	EventTypeAccountDisabled                 = "https://schemas.openid.net/secevent/risc/event-type/account-disabled"
+	EventTypeAccountEnabled                  = "https://schemas.openid.net/secevent/risc/event-type/account-enabled"
+	EventTypeIdentifierChanged               = "https://schemas.openid.net/secevent/risc/event-type/identifier-changed"
+	EventTypeIdentifierRecycled              = "https://schemas.openid.net/secevent/risc/event-type/identifier-recycled"
+	EventTypeCredentialCompromise            = "https://schemas.openid.net/secevent/risc/event-type/credential-compromise"
+	EventTypeOptIn                           = "https://schemas.openid.net/secevent/risc/event-type/opt-in"
+	EventTypeOptOut                          = "https://schemas.openid.net/secevent/risc/event-type/opt-out"
+	EventTypeRecoveryActivated               = "https://schemas.openid.net/secevent/risc/event-type/recovery-activated"
+	EventTypeRecoveryInformationChanged      = "https://schemas.openid.net/secevent/risc/event-type/recovery-information-changed"
+
+	// SSF Events - Shared Signals Framework
+	EventTypeVerification = "https://schemas.openid.net/secevent/ssf/event-type/verification"
 )
 
 // Common subject formats
@@ -200,13 +217,13 @@ func (e *SecurityEvent) ToPubSubMessage() ([]byte, map[string]string, error) {
 
 // InternalMessage represents the internal message schema used in the unified Pub/Sub topic
 type InternalMessage struct {
-	MessageID      string            `json:"message_id"`      // Unique message ID
-	MessageType    string            `json:"message_type"`    // Always "security_event" for events
-	Version        string            `json:"version"`         // Schema version
-	Timestamp      time.Time         `json:"timestamp"`       // Message creation time
-	Event          *SecurityEvent    `json:"event"`           // The actual security event
-	Routing        RoutingInfo       `json:"routing"`         // Routing and delivery information
-	Metadata       MessageMetadata   `json:"metadata"`        // Message metadata
+	MessageID   string          `json:"message_id"`   // Unique message ID
+	MessageType string          `json:"message_type"` // Always "security_event" for events
+	Version     string          `json:"version"`      // Schema version
+	Timestamp   time.Time       `json:"timestamp"`    // Message creation time
+	Event       *SecurityEvent  `json:"event"`        // The actual security event
+	Routing     RoutingInfo     `json:"routing"`      // Routing and delivery information
+	Metadata    MessageMetadata `json:"metadata"`     // Message metadata
 }
 
 // RoutingInfo contains information for event routing and delivery
@@ -221,12 +238,12 @@ type RoutingInfo struct {
 
 // MessageMetadata contains metadata about the internal message
 type MessageMetadata struct {
-	HubInstanceID   string            `json:"hub_instance_id"`  // ID of the hub instance that created this message
-	ProcessingID    string            `json:"processing_id"`    // Links to the original event processing
-	RetryCount      int               `json:"retry_count"`      // Number of retries for this message
-	OriginalTopic   string            `json:"original_topic"`   // For migration/debugging (can be removed later)
-	CreatedAt       time.Time         `json:"created_at"`       // When this internal message was created
-	UpdatedAt       time.Time         `json:"updated_at"`       // Last update time
+	HubInstanceID string    `json:"hub_instance_id"` // ID of the hub instance that created this message
+	ProcessingID  string    `json:"processing_id"`   // Links to the original event processing
+	RetryCount    int       `json:"retry_count"`     // Number of retries for this message
+	OriginalTopic string    `json:"original_topic"`  // For migration/debugging (can be removed later)
+	CreatedAt     time.Time `json:"created_at"`      // When this internal message was created
+	UpdatedAt     time.Time `json:"updated_at"`      // Last update time
 }
 
 // ToInternalMessage converts a SecurityEvent to an InternalMessage for the unified topic
@@ -241,7 +258,7 @@ func (e *SecurityEvent) ToInternalMessage(targetReceivers []string, hubInstanceI
 			TargetReceivers: targetReceivers,
 			EventType:       e.Type,
 			Subject:         e.Subject.Identifier,
-			Priority:        0, // Default normal priority
+			Priority:        0,              // Default normal priority
 			TTL:             24 * time.Hour, // Default 24 hour TTL
 			Tags:            make(map[string]string),
 		},

@@ -3,8 +3,8 @@ package controller
 import (
 	"context"
 	"fmt"
-	"testing"
 	"log/slog"
+	"testing"
 
 	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/registry"
 	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/pkg/models"
@@ -12,10 +12,10 @@ import (
 
 // mockPubSubClient is a mock implementation of controller.PubSubClient for testing
 type mockPubSubClient struct {
-	publishedEvents   []*models.SecurityEvent
-	targetReceivers   [][]string
-	hubSubscriptions  []string
-	hubInstanceID     string
+	publishedEvents  []*models.SecurityEvent
+	targetReceivers  [][]string
+	hubSubscriptions []string
+	hubInstanceID    string
 }
 
 func (m *mockPubSubClient) PublishEvent(ctx context.Context, event *models.SecurityEvent, targetReceivers []string) error {
@@ -69,10 +69,10 @@ func TestController_RegisterReceiver(t *testing.T) {
 	controller, _, _ := createTestController()
 
 	receiverReq := &models.ReceiverRequest{
-		ID:          "test-receiver",
-		Name:        "Test Receiver",
-		WebhookURL:  "https://example.com/webhook",
-		EventTypes:  []string{models.EventTypeSessionRevoked},
+		ID:         "test-receiver",
+		Name:       "Test Receiver",
+		WebhookURL: "https://example.com/webhook",
+		EventTypes: []string{models.EventTypeSessionRevoked},
 		Delivery: models.DeliveryConfig{
 			Method: models.DeliveryMethodWebhook,
 		},
@@ -183,10 +183,10 @@ func TestController_UpdateReceiver(t *testing.T) {
 
 	// Update with different event types
 	updateReq := &models.ReceiverRequest{
-		ID:          "test-receiver",
-		Name:        "Updated Receiver",
-		WebhookURL:  "https://example.com/webhook",
-		EventTypes:  []string{models.EventTypeCredentialChange, models.EventTypeAssuranceLevelChange},
+		ID:         "test-receiver",
+		Name:       "Updated Receiver",
+		WebhookURL: "https://example.com/webhook",
+		EventTypes: []string{models.EventTypeCredentialChange, models.EventTypeAssuranceLevelChange},
 		Delivery: models.DeliveryConfig{
 			Method: models.DeliveryMethodWebhook,
 		},
@@ -231,10 +231,10 @@ func TestController_UpdateReceiver_SameEventTypes(t *testing.T) {
 
 	// Update with same event types but different name
 	updateReq := &models.ReceiverRequest{
-		ID:          "test-receiver",
-		Name:        "Updated Receiver",
-		WebhookURL:  "https://example.com/webhook",
-		EventTypes:  []string{models.EventTypeSessionRevoked}, // Same event types
+		ID:         "test-receiver",
+		Name:       "Updated Receiver",
+		WebhookURL: "https://example.com/webhook",
+		EventTypes: []string{models.EventTypeSessionRevoked}, // Same event types
 		Delivery: models.DeliveryConfig{
 			Method: models.DeliveryMethodWebhook,
 		},
@@ -546,10 +546,10 @@ func TestController_UpdateReceiver_NotFound(t *testing.T) {
 
 	// Try to update non-existent receiver
 	updateReq := &models.ReceiverRequest{
-		ID:          "nonexistent",
-		Name:        "Updated Receiver",
-		WebhookURL:  "https://example.com/webhook",
-		EventTypes:  []string{models.EventTypeSessionRevoked},
+		ID:         "nonexistent",
+		Name:       "Updated Receiver",
+		WebhookURL: "https://example.com/webhook",
+		EventTypes: []string{models.EventTypeSessionRevoked},
 		Delivery: models.DeliveryConfig{
 			Method: models.DeliveryMethodWebhook,
 		},
@@ -624,15 +624,15 @@ func TestController_RegisterReceiver_DuplicateID(t *testing.T) {
 
 	// Register first receiver
 	receiverReq1 := &models.ReceiverRequest{
-		ID:          "duplicate-receiver",
-		Name:        "First Receiver",
-		WebhookURL:  "https://example.com/webhook1",
-		EventTypes:  []string{models.EventTypeSessionRevoked},
+		ID:         "duplicate-receiver",
+		Name:       "First Receiver",
+		WebhookURL: "https://example.com/webhook1",
+		EventTypes: []string{models.EventTypeSessionRevoked},
 		Delivery: models.DeliveryConfig{
 			Method: models.DeliveryMethodWebhook,
 		},
 		Auth: models.AuthConfig{
-			Type:  models.AuthTypeNone,
+			Type: models.AuthTypeNone,
 		},
 	}
 
@@ -643,15 +643,15 @@ func TestController_RegisterReceiver_DuplicateID(t *testing.T) {
 
 	// Try to register receiver with same ID
 	receiverReq2 := &models.ReceiverRequest{
-		ID:          "duplicate-receiver",
-		Name:        "Second Receiver",
-		WebhookURL:  "https://example.com/webhook2",
-		EventTypes:  []string{models.EventTypeCredentialChange},
+		ID:         "duplicate-receiver",
+		Name:       "Second Receiver",
+		WebhookURL: "https://example.com/webhook2",
+		EventTypes: []string{models.EventTypeCredentialChange},
 		Delivery: models.DeliveryConfig{
 			Method: models.DeliveryMethodWebhook,
 		},
 		Auth: models.AuthConfig{
-			Type:  models.AuthTypeNone,
+			Type: models.AuthTypeNone,
 		},
 	}
 
@@ -822,7 +822,7 @@ func TestController_BrokerStats_DetailedCoverage(t *testing.T) {
 
 	// Test with receivers having multiple event types
 	receiver := &models.Receiver{
-		ID:         "multi-event-receiver",
+		ID: "multi-event-receiver",
 		EventTypes: []string{
 			models.EventTypeSessionRevoked,
 			models.EventTypeCredentialChange,
@@ -1012,6 +1012,9 @@ func TestController_Start_ErrorHandling(t *testing.T) {
 		errorOnCreate:    true,
 	}
 	controller.pubsubClient = errorClient
+
+	// Also update the hubReceiver's client since it has its own copy
+	controller.hubReceiver.SetPubSubClient(errorClient)
 
 	ctx := context.Background()
 	err := controller.Start(ctx)

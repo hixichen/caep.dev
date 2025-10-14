@@ -18,7 +18,6 @@ import (
 	"github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/pkg/models"
 )
 
-
 // mockPubSubClient implements controller.PubSubClient for testing
 type mockPubSubClientForHandlers struct{}
 
@@ -56,9 +55,9 @@ func createTestHandlers(t *testing.T) *Handlers {
 	ssfController := controller.New(pubsubClient, receiverRegistry, logger)
 
 	config := &Config{
-		Logger:   logger,
+		Logger:     logger,
 		Controller: ssfController,
-		Registry: receiverRegistry,
+		Registry:   receiverRegistry,
 	}
 
 	return New(config)
@@ -180,10 +179,10 @@ func TestHandlers_HandleRegisterReceiver(t *testing.T) {
 
 	// Test valid receiver registration
 	receiverReq := models.ReceiverRequest{
-		ID:          "test-receiver",
-		Name:        "Test Receiver",
-		WebhookURL:  "https://example.com/webhook",
-		EventTypes:  []string{models.EventTypeSessionRevoked},
+		ID:         "test-receiver",
+		Name:       "Test Receiver",
+		WebhookURL: "https://example.com/webhook",
+		EventTypes: []string{models.EventTypeSessionRevoked},
 		Delivery: models.DeliveryConfig{
 			Method: models.DeliveryMethodWebhook,
 		},
@@ -544,10 +543,10 @@ func TestHandlers_HandleUpdateReceiver(t *testing.T) {
 
 	// Test updating the receiver
 	updateReq := models.ReceiverRequest{
-		ID:          "update-receiver",
-		Name:        "Updated Name",
-		WebhookURL:  "https://example.com/webhook",
-		EventTypes:  []string{models.EventTypeCredentialChange},
+		ID:         "update-receiver",
+		Name:       "Updated Name",
+		WebhookURL: "https://example.com/webhook",
+		EventTypes: []string{models.EventTypeCredentialChange},
 		Delivery: models.DeliveryConfig{
 			Method: models.DeliveryMethodWebhook,
 		},
@@ -826,7 +825,7 @@ func TestHandlers_formatPrometheusMetrics_WithData(t *testing.T) {
 			models.ReceiverStatusInactive: 2,
 		},
 		EventTypeStats: map[string]int{
-			models.EventTypeSessionRevoked:    2,
+			models.EventTypeSessionRevoked:   2,
 			models.EventTypeCredentialChange: 1,
 		},
 	}

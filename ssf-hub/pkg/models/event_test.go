@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 )
@@ -345,6 +346,180 @@ func TestEventFilter_extractFieldValue(t *testing.T) {
 			got := filter.extractFieldValue(event)
 			if got != tt.want {
 				t.Errorf("extractFieldValue() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestEventTypeConstants(t *testing.T) {
+	// Test all CAEP event type constants
+	caepEvents := map[string]string{
+		"EventTypeSessionRevoked":         EventTypeSessionRevoked,
+		"EventTypeAssuranceLevelChange":   EventTypeAssuranceLevelChange,
+		"EventTypeCredentialChange":       EventTypeCredentialChange,
+		"EventTypeDeviceComplianceChange": EventTypeDeviceComplianceChange,
+		"EventTypeTokenClaimsChange":      EventTypeTokenClaimsChange,
+	}
+
+	expectedCAEPPrefix := "https://schemas.openid.net/secevent/caep/event-type/"
+	for name, uri := range caepEvents {
+		if !strings.HasPrefix(uri, expectedCAEPPrefix) {
+			t.Errorf("CAEP event %s URI %s does not have expected prefix %s", name, uri, expectedCAEPPrefix)
+		}
+		if uri == "" {
+			t.Errorf("CAEP event %s URI is empty", name)
+		}
+	}
+
+	// Test all RISC event type constants
+	riscEvents := map[string]string{
+		"EventTypeAccountCredentialChangeRequired": EventTypeAccountCredentialChangeRequired,
+		"EventTypeAccountPurged":                   EventTypeAccountPurged,
+		"EventTypeAccountDisabled":                 EventTypeAccountDisabled,
+		"EventTypeAccountEnabled":                  EventTypeAccountEnabled,
+		"EventTypeIdentifierChanged":               EventTypeIdentifierChanged,
+		"EventTypeIdentifierRecycled":              EventTypeIdentifierRecycled,
+		"EventTypeCredentialCompromise":            EventTypeCredentialCompromise,
+		"EventTypeOptIn":                           EventTypeOptIn,
+		"EventTypeOptOut":                          EventTypeOptOut,
+		"EventTypeRecoveryActivated":               EventTypeRecoveryActivated,
+		"EventTypeRecoveryInformationChanged":      EventTypeRecoveryInformationChanged,
+	}
+
+	expectedRISCPrefix := "https://schemas.openid.net/secevent/risc/event-type/"
+	for name, uri := range riscEvents {
+		if !strings.HasPrefix(uri, expectedRISCPrefix) {
+			t.Errorf("RISC event %s URI %s does not have expected prefix %s", name, uri, expectedRISCPrefix)
+		}
+		if uri == "" {
+			t.Errorf("RISC event %s URI is empty", name)
+		}
+	}
+
+	// Test SSF event type constants
+	ssfEvents := map[string]string{
+		"EventTypeVerification": EventTypeVerification,
+	}
+
+	expectedSSFPrefix := "https://schemas.openid.net/secevent/ssf/event-type/"
+	for name, uri := range ssfEvents {
+		if !strings.HasPrefix(uri, expectedSSFPrefix) {
+			t.Errorf("SSF event %s URI %s does not have expected prefix %s", name, uri, expectedSSFPrefix)
+		}
+		if uri == "" {
+			t.Errorf("SSF event %s URI is empty", name)
+		}
+	}
+}
+
+func TestEventTypeUniqueness(t *testing.T) {
+	// Collect all event type constants to ensure they are unique
+	allEventTypes := []string{
+		// CAEP Events
+		EventTypeSessionRevoked,
+		EventTypeAssuranceLevelChange,
+		EventTypeCredentialChange,
+		EventTypeDeviceComplianceChange,
+		EventTypeTokenClaimsChange,
+		// RISC Events
+		EventTypeAccountCredentialChangeRequired,
+		EventTypeAccountPurged,
+		EventTypeAccountDisabled,
+		EventTypeAccountEnabled,
+		EventTypeIdentifierChanged,
+		EventTypeIdentifierRecycled,
+		EventTypeCredentialCompromise,
+		EventTypeOptIn,
+		EventTypeOptOut,
+		EventTypeRecoveryActivated,
+		EventTypeRecoveryInformationChanged,
+		// SSF Events
+		EventTypeVerification,
+	}
+
+	// Check for duplicates
+	seen := make(map[string]bool)
+	for _, eventType := range allEventTypes {
+		if seen[eventType] {
+			t.Errorf("Duplicate event type found: %s", eventType)
+		}
+		seen[eventType] = true
+	}
+
+	// Verify we have the expected number of unique event types
+	expectedCount := 17 // 5 CAEP + 11 RISC + 1 SSF
+	if len(allEventTypes) != expectedCount {
+		t.Errorf("Expected %d event types, got %d", expectedCount, len(allEventTypes))
+	}
+}
+
+func TestNewEventTypesInFiltering(t *testing.T) {
+	// Test that new event types work with the filtering system
+	event := &SecurityEvent{
+		ID:     "test-event-123",
+		Type:   EventTypeTokenClaimsChange, // Using one of the new event types
+		Source: "test-issuer",
+		Subject: Subject{
+			Format:     SubjectFormatEmail,
+			Identifier: "user@example.com",
+		},
+		Data: map[string]interface{}{
+			"previous_claims": map[string]interface{}{"role": "user"},
+			"current_claims":  map[string]interface{}{"role": "admin"},
+		},
+		Metadata: EventMetadata{
+			TransmitterID: "test-transmitter",
+		},
+	}
+
+	tests := []struct {
+		name      string
+		filter    EventFilter
+		eventType string
+		want      bool
+	}{
+		{
+			name: "token claims change - exact match",
+			filter: EventFilter{
+				Field:    "type",
+				Operator: FilterOpEquals,
+				Value:    EventTypeTokenClaimsChange,
+			},
+			eventType: EventTypeTokenClaimsChange,
+			want:      true,
+		},
+		{
+			name: "account purged - no match",
+			filter: EventFilter{
+				Field:    "type",
+				Operator: FilterOpEquals,
+				Value:    EventTypeAccountPurged,
+			},
+			eventType: EventTypeTokenClaimsChange,
+			want:      false,
+		},
+		{
+			name: "multiple new types - in filter",
+			filter: EventFilter{
+				Field:    "type",
+				Operator: FilterOpIn,
+				Value: []interface{}{
+					EventTypeTokenClaimsChange,
+					EventTypeAccountPurged,
+					EventTypeCredentialCompromise,
+				},
+			},
+			eventType: EventTypeTokenClaimsChange,
+			want:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			event.Type = tt.eventType
+			got := tt.filter.Matches(event)
+			if got != tt.want {
+				t.Errorf("EventFilter.Matches() with %s = %v, want %v", tt.eventType, got, tt.want)
 			}
 		})
 	}

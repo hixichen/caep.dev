@@ -48,9 +48,9 @@ func main() {
 
 	// Initialize handlers
 	handlerConfig := &handlers.Config{
-		Logger:   logger,
+		Logger:     logger,
 		Controller: ssfController,
-		Registry: receiverRegistry,
+		Registry:   receiverRegistry,
 	}
 
 	apiHandlers := handlers.New(handlerConfig)

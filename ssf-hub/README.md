@@ -33,7 +33,7 @@ The SSF Hub Service provides:
 │  • Auth Services                                                       │        │
 │  • Analytics                                                           │        │
 │                                                                         │        │
-│  [Advanced Integrations] ◄──Direct Pub/Sub──────────────────────────────┘        │
+│  [Advanced Integrations]                                                        │
 │  • Custom Receivers                                                             │
 │  • Federated Hubs                                                               │
 └─────────────────────────────────────────────────────────────────────────────────┘
@@ -65,7 +65,6 @@ Key Components:
 ### Receiver Management
 - REST API for receiver registration and management
 - Hub-managed webhook delivery (recommended)
-- Direct Pub/Sub access for advanced integrations
 - Event type subscriptions and filtering
 - Authentication and authorization for receivers
 - Hub federation support for multi-region deployments
@@ -467,12 +466,7 @@ go test -tags=integration ./...
    - Hub delivers events via HTTP POST
    - Built-in retry logic and monitoring
 
-2. **Direct Pub/Sub Access** (Advanced)
-   - Subscribe directly to unified topic
-   - Full control over message processing
-   - Custom filtering and routing
-
-3. **Hub Federation**
+2. **Hub Federation**
    - Multi-region hub deployments
    - Cross-hub event sharing
    - Disaster recovery scenarios

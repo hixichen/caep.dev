@@ -142,6 +142,86 @@ class SSFHubDemo {
     }
   }
 
+  async demonstrateAllEventTypes() {
+    console.log('\n🌟 Demonstrating All Supported Event Types');
+    console.log('==========================================');
+
+    const { SSFTransmitter } = require('./simple-sdk.js');
+    const transmitter = new SSFTransmitter(this.hubUrl, 'poc-demo-transmitter', {
+      devMode: this.devMode
+    });
+
+    const demoUser = 'demo-user@example.com';
+    let successCount = 0;
+    let totalEvents = 0;
+
+    console.log('📧 Demo User:', demoUser);
+    console.log('');
+
+    // CAEP Events
+    console.log('🔒 CAEP Events (Continuous Access Evaluation Profile):');
+    const caepEvents = [
+      { method: 'sendSessionRevoked', args: [demoUser, 'demo_logout'], name: 'Session Revoked' },
+      { method: 'sendCredentialChange', args: [demoUser, 'update'], name: 'Credential Change' },
+      { method: 'sendAssuranceLevelChange', args: [demoUser, 'nist-aal-1', 'nist-aal-2'], name: 'Assurance Level Change' },
+      { method: 'sendTokenClaimsChange', args: [demoUser, {role: 'user'}, {role: 'admin'}], name: 'Token Claims Change' },
+    ];
+
+    for (const event of caepEvents) {
+      try {
+        totalEvents++;
+        console.log(`  ✨ Sending ${event.name}...`);
+        await transmitter[event.method](...event.args);
+        successCount++;
+      } catch (error) {
+        console.log(`  ❌ Failed ${event.name}: ${error.message}`);
+      }
+    }
+
+    // RISC Events
+    console.log('\n🛡️ RISC Events (Risk Incident Sharing and Coordination):');
+    const riscEvents = [
+      { method: 'sendAccountCredentialChangeRequired', args: [demoUser, 'security_policy'], name: 'Account Credential Change Required' },
+      { method: 'sendAccountDisabled', args: [demoUser, 'administrative'], name: 'Account Disabled' },
+      { method: 'sendAccountEnabled', args: [demoUser, 'administrative'], name: 'Account Enabled' },
+      { method: 'sendIdentifierChanged', args: ['old@example.com', demoUser, 'user_initiated'], name: 'Identifier Changed' },
+      { method: 'sendCredentialCompromise', args: [demoUser, 'password', 'data_breach'], name: 'Credential Compromise' },
+      { method: 'sendOptIn', args: [demoUser], name: 'Opt In' },
+      { method: 'sendOptOut', args: [demoUser], name: 'Opt Out' },
+      { method: 'sendRecoveryActivated', args: [demoUser, 'email'], name: 'Recovery Activated' },
+      { method: 'sendRecoveryInformationChanged', args: [demoUser, 'recovery_email'], name: 'Recovery Information Changed' },
+    ];
+
+    for (const event of riscEvents) {
+      try {
+        totalEvents++;
+        console.log(`  ⚡ Sending ${event.name}...`);
+        await transmitter[event.method](...event.args);
+        successCount++;
+      } catch (error) {
+        console.log(`  ❌ Failed ${event.name}: ${error.message}`);
+      }
+    }
+
+    // Warning: Account Purged is destructive - demo only
+    try {
+      totalEvents++;
+      console.log(`  🗑️ Sending Account Purged (destructive demo)...`);
+      await transmitter.sendAccountPurged(demoUser, 'demo_cleanup');
+      successCount++;
+    } catch (error) {
+      console.log(`  ❌ Failed Account Purged: ${error.message}`);
+    }
+
+    console.log(`\n📊 Event Summary: ${successCount}/${totalEvents} events sent successfully`);
+
+    if (successCount === totalEvents) {
+      console.log('🎉 All event types demonstrated successfully!');
+    } else {
+      console.log('⚠️ Some events failed - check hub logs for details');
+    }
+  }
+
   async runDemo() {
     console.log('🎯 SSF Hub POC Demo');
     console.log('==================');
@@ -165,11 +245,17 @@ class SSFHubDemo {
       // Send a test event
       await this.sendTestEvent(authMethod);
 
+      // Check if user wants to see all event types
+      if (args.includes('--all-events')) {
+        await this.demonstrateAllEventTypes();
+      }
+
       console.log('\n🎉 POC Demo completed successfully!');
       console.log('\n💡 Tips:');
       console.log('   - Set DEV_DEBUG=true for development mode bypass');
       console.log('   - Use --bearer-token flag to test JWT authentication');
-      console.log('   - Check your webhook.site URL to see the delivered event');
+      console.log('   - Use --all-events flag to demo all 17 standardized event types');
+      console.log('   - Check your webhook.site URL to see the delivered events');
       console.log('   - Visit http://localhost:8080/metrics to see hub metrics');
 
     } catch (error) {
