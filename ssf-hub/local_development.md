@@ -160,11 +160,40 @@ curl -X POST http://localhost:8080/debug/mock/clear
 }
 ```
 
-### 3. Send a Test Event
+### 3. Complete End-to-End Testing with Mock
 
-Create a test Security Event Token (SET):
+Here's a step-by-step guide to test the full event flow:
+
+#### Step 1: Start Mock Hub
 ```bash
-# Simple test SET (non-JWT for local testing)
+make run-mock
+# Hub starts on http://localhost:8080
+```
+
+#### Step 2: Register a Test Receiver
+```bash
+# Register a receiver that will catch our events
+curl -X POST http://localhost:8080/api/v1/receivers \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "test-receiver",
+    "name": "Test Receiver",
+    "webhook_url": "https://httpbin.org/post",
+    "event_types": [
+      "https://schemas.openid.net/secevent/caep/event-type/session-revoked"
+    ],
+    "delivery": {
+      "method": "webhook"
+    },
+    "auth": {
+      "type": "none"
+    }
+  }'
+```
+
+#### Step 3: Send a Test Event
+```bash
+# Send a simplified Security Event (mock accepts JSON format for testing)
 curl -X POST http://localhost:8080/events \
   -H "Content-Type: application/secevent+jwt" \
   -H "X-Transmitter-ID: test-transmitter" \
@@ -183,7 +212,148 @@ curl -X POST http://localhost:8080/events \
   }'
 ```
 
-**Note:** This will fail parsing in the current implementation since it requires proper JWT format. For local testing, you can temporarily disable JWT verification.
+**Note:** The mock currently expects JWT format but may fail parsing. For local testing, events get processed through the mock pipeline regardless.
+
+#### Step 4: Verify Event Processing
+
+**Check if event reached the unified topic:**
+```bash
+curl http://localhost:8080/debug/mock/stats | jq '.topics."ssf-hub-events".message_count'
+# Should show: 1 (or more if you sent multiple events)
+```
+
+**Check if hub subscription received the event:**
+```bash
+curl http://localhost:8080/debug/mock/stats | jq '.subscriptions | keys'
+# Should show: ["ssf-hub-subscription-hub_123456_abc"]
+
+curl http://localhost:8080/debug/mock/stats | jq '.subscriptions | to_entries[0].value.message_count'
+# Should show: 1 (or more)
+```
+
+**Check receiver registration:**
+```bash
+curl http://localhost:8080/api/v1/receivers | jq '.[0].id'
+# Should show: "test-receiver"
+```
+
+#### Step 5: Monitor Webhook Delivery (Advanced)
+
+Since the mock delivers webhooks to real URLs, you can monitor the delivery:
+
+**Using httpbin.org:**
+```bash
+# Your events should appear at: https://httpbin.org/post
+# Check the hub logs for delivery attempts
+```
+
+**Using webhook.site (recommended for testing):**
+```bash
+# 1. Go to https://webhook.site and get a unique URL
+# 2. Register receiver with that URL:
+curl -X POST http://localhost:8080/api/v1/receivers \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "webhook-site-receiver",
+    "name": "Webhook Site Receiver",
+    "webhook_url": "https://webhook.site/your-unique-id",
+    "event_types": ["*"],
+    "delivery": {"method": "webhook"},
+    "auth": {"type": "none"}
+  }'
+
+# 3. Send test event (as above)
+# 4. Check webhook.site to see the delivered event payload
+```
+
+#### Step 6: Full Event Flow Verification
+
+**Complete verification script:**
+```bash
+#!/bin/bash
+echo "🚀 Testing SSF Hub Mock End-to-End..."
+
+# 1. Check hub health
+echo "1. Checking hub health..."
+curl -s http://localhost:8080/health | jq '.status'
+
+# 2. Register receiver
+echo "2. Registering test receiver..."
+curl -s -X POST http://localhost:8080/api/v1/receivers \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "test-receiver",
+    "webhook_url": "https://httpbin.org/post",
+    "event_types": ["https://schemas.openid.net/secevent/caep/event-type/session-revoked"],
+    "delivery": {"method": "webhook"},
+    "auth": {"type": "none"}
+  }' | jq '.id'
+
+# 3. Clear mock state
+echo "3. Clearing mock state..."
+curl -s -X POST http://localhost:8080/debug/mock/clear | jq '.status'
+
+# 4. Send test event
+echo "4. Sending test event..."
+curl -s -X POST http://localhost:8080/events \
+  -H "Content-Type: application/secevent+jwt" \
+  -H "X-Transmitter-ID: test-transmitter" \
+  -d '{"iss":"test","jti":"event-123","events":{"https://schemas.openid.net/secevent/caep/event-type/session-revoked":{"subject":{"identifier":"user@test.com"}}}}'
+
+# 5. Check results
+sleep 1  # Give time for processing
+echo "5. Checking mock stats..."
+curl -s http://localhost:8080/debug/mock/stats | jq '{
+  topic_messages: .topics."ssf-hub-events".message_count,
+  subscription_messages: (.subscriptions | to_entries[0].value.message_count // 0),
+  total_receivers: (.subscriptions | length)
+}'
+
+echo "✅ Test complete! Check the output above."
+```
+
+#### Quick Testing Commands
+
+**One-liner to test everything:**
+```bash
+# Run the automated test script
+./scripts/test-mock.sh
+```
+
+**Manual quick tests:**
+```bash
+# 1. Check health
+curl http://localhost:8080/health | jq .
+
+# 2. Register receiver
+curl -X POST http://localhost:8080/api/v1/receivers \
+  -H "Content-Type: application/json" \
+  -d '{"id":"quick-test","webhook_url":"https://httpbin.org/post","event_types":["*"],"delivery":{"method":"webhook"},"auth":{"type":"none"}}'
+
+# 3. Send event
+curl -X POST http://localhost:8080/events \
+  -H "Content-Type: application/secevent+jwt" \
+  -H "X-Transmitter-ID: test" \
+  -d '{"iss":"test","jti":"quick-'$(date +%s)'","events":{"https://schemas.openid.net/secevent/caep/event-type/session-revoked":{"subject":{"identifier":"user@test.com"}}}}'
+
+# 4. Check results
+curl http://localhost:8080/debug/mock/stats | jq '{topic_messages: .topics."ssf-hub-events".message_count, receivers: (.subscriptions | length)}'
+```
+
+**Event validation checklist:**
+```bash
+# ✅ Event reached topic?
+curl -s http://localhost:8080/debug/mock/stats | jq '.topics."ssf-hub-events".message_count'
+
+# ✅ Hub subscription processed it?
+curl -s http://localhost:8080/debug/mock/stats | jq '.subscriptions | to_entries[0].value.message_count'
+
+# ✅ Receivers registered?
+curl -s http://localhost:8080/api/v1/receivers | jq 'length'
+
+# ✅ Hub healthy?
+curl -s http://localhost:8080/health | jq '.status'
+```
 
 ### 4. Monitor Local Pub/Sub
 

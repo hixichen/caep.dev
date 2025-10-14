@@ -35,6 +35,10 @@ test-integration: ## Run integration tests (requires GCP setup)
 	@echo "Running integration tests..."
 	@go test -v -tags=integration ./...
 
+test-mock: ## Test mock hub end-to-end (requires hub running on :8080)
+	@echo "Testing mock hub end-to-end..."
+	@./scripts/test-mock.sh
+
 # Code quality
 lint: ## Run golangci-lint
 	@echo "Running linter..."
