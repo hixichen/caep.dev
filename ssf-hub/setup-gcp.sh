@@ -112,31 +112,20 @@ if [ -n "$KEY_FILE" ]; then
     print_info "Service account key saved to: $KEY_FILE"
 fi
 
-# Create Pub/Sub topics (optional - the hub will create them automatically)
-print_info "Setting up Pub/Sub topics..."
+# Create the unified Pub/Sub topic (optional - the hub will create it automatically)
+print_info "Setting up unified Pub/Sub topic..."
 
-TOPICS=(
-    "ssf-events-session-revoked"
-    "ssf-events-credential-change"
-    "ssf-events-device-compliance-change"
-    "ssf-events-account-disabled"
-    "ssf-events-account-purged"
-    "ssf-events-identifier-changed"
-    "ssf-events-identifier-recycled"
-    "ssf-events-assurance-level-change"
-    "ssf-events-recovery-activated"
-    "ssf-events-recovery-information-changed"
-    "ssf-events-token-claims-change"
-)
+UNIFIED_TOPIC="ssf-hub-events"
 
-for topic in "${TOPICS[@]}"; do
-    if gcloud pubsub topics describe $topic &>/dev/null; then
-        print_warn "Topic $topic already exists, skipping"
-    else
-        gcloud pubsub topics create $topic
-        print_info "Created topic: $topic"
-    fi
-done
+if gcloud pubsub topics describe $UNIFIED_TOPIC &>/dev/null; then
+    print_warn "Unified topic $UNIFIED_TOPIC already exists, skipping"
+else
+    gcloud pubsub topics create $UNIFIED_TOPIC
+    print_info "Created unified topic: $UNIFIED_TOPIC"
+fi
+
+print_info "SSF Hub uses a single unified topic for all event types"
+print_info "All security events are published to: $UNIFIED_TOPIC"
 
 # Generate environment configuration
 print_info "Generating environment configuration..."

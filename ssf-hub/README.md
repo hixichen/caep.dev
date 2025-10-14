@@ -211,21 +211,16 @@ gcloud iam service-accounts keys create ssf-hub-key.json \
     --iam-account=$SERVICE_ACCOUNT
 ```
 
-#### 3. Topic and Subscription Naming
+#### 3. Unified Topic Architecture
 
-The hub automatically creates topics based on event types:
+The hub uses a single unified topic for all security events:
+- **Unified Topic**: `ssf-hub-events`
+- All event types (session-revoked, credential-change, etc.) are published to this single topic
+- Event routing is handled by the hub based on message metadata and receiver subscriptions
 
-| Event Type | Topic Name |
-|------------|------------|
-| Session Revoked | `ssf-events-session-revoked` |
-| Credential Change | `ssf-events-credential-change` |
-| Assurance Level Change | `ssf-events-assurance-level-change` |
-| Device Compliance Change | `ssf-events-device-compliance-change` |
-| Verification | `ssf-events-verification` |
-
-Subscriptions are created per receiver:
-- Format: `{topic-prefix}-{receiver-id}-{event-name}`
-- Example: `ssf-events-my-service-session-revoked`
+Hub internal subscription:
+- Format: `ssf-hub-subscription-{hub-instance-id}`
+- Example: `ssf-hub-subscription-hub_1699123456_abc123`
 
 #### 4. Pub/Sub Performance Configuration
 

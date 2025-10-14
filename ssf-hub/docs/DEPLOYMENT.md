@@ -106,10 +106,10 @@ kubectl apply -f deployments/kubernetes/ingress.yaml
 
 ### Pub/Sub Configuration
 
-The hub automatically creates Pub/Sub topics based on event types:
-- Session revoked events → `ssf-events-session-revoked`
-- Credential change events → `ssf-events-credential-change`
-- etc.
+The hub uses a single unified Pub/Sub topic for all events:
+- All security events → `ssf-hub-events`
+
+The hub automatically creates this topic if it doesn't exist. All event types are published to this single topic with routing information in the message metadata.
 
 ## Usage
 
