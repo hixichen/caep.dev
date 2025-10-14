@@ -7,11 +7,29 @@ This guide helps developers set up, debug, and develop the SSF Hub locally.
 ### Prerequisites
 
 - Go 1.21+
-- Docker (for local Pub/Sub emulator)
-- `gcloud` CLI (optional, for real GCP)
 - `curl` or `httpie` for API testing
+- **Optional:** Docker (for Google Pub/Sub emulator)
+- **Optional:** `gcloud` CLI (for real GCP)
 
-### 1. Start Local Pub/Sub Emulator
+### Option A: In-Memory Mock (No GCP Required) 🚀
+
+**Perfect when you can't get GCP service accounts!**
+
+```bash
+# Clone and build
+git clone <repository-url>
+cd ssf-hub
+go mod download
+
+# Run with in-memory mock (no GCP needed!)
+make run-mock
+```
+
+The hub will start on `http://localhost:8080` with everything running in memory!
+
+### Option B: Google Pub/Sub Emulator
+
+If you want to test with real Pub/Sub behavior:
 
 ```bash
 # Start the Google Cloud Pub/Sub emulator
@@ -22,39 +40,29 @@ docker run -d --name pubsub-emulator \
 
 # Set environment variable to use emulator
 export PUBSUB_EMULATOR_HOST=localhost:8085
+
+# Run with emulator
+make run-dev
 ```
 
-### 2. Clone and Build
-
-```bash
-git clone <repository-url>
-cd ssf-hub
-go mod download
-make build
-```
-
-### 3. Configure for Local Development
+### Option C: Real GCP (If You Have Service Account)
 
 Create `.env.local`:
 ```bash
 # Local development configuration
-GCP_PROJECT_ID=local-dev-project
-PUBSUB_EMULATOR_HOST=localhost:8085
+GCP_PROJECT_ID=your-real-project
+GOOGLE_APPLICATION_CREDENTIALS=./service-account-key.json
 LOG_LEVEL=debug
 SERVER_PORT=8080
 JWT_SECRET=local-dev-secret-change-in-production
 REQUIRE_AUTH=false
 ```
 
-### 4. Run the Hub
-
 ```bash
 # Load environment and run
 source .env.local
 make run-dev
 ```
-
-The hub will start on `http://localhost:8080` with debug logging enabled.
 
 ## Development Workflow
 
@@ -114,6 +122,42 @@ curl -X POST http://localhost:8080/api/v1/receivers \
 
 # List receivers
 curl http://localhost:8080/api/v1/receivers
+```
+
+### 2.1. Mock-Specific Debug Endpoints
+
+When using the in-memory mock (`make run-mock`), you get additional debug endpoints:
+
+```bash
+# Check mock statistics
+curl http://localhost:8080/debug/mock/stats | jq .
+
+# Clear all mock messages (useful for testing)
+curl -X POST http://localhost:8080/debug/mock/clear
+```
+
+**Example mock stats output:**
+```json
+{
+  "project_id": "mock-local-project",
+  "unified_topic": "ssf-hub-events",
+  "hub_instance_id": "hub_1699123456_abc123",
+  "topics_count": 1,
+  "subscriptions_count": 1,
+  "topics": {
+    "ssf-hub-events": {
+      "message_count": 5,
+      "created_at": "2023-12-01T12:00:00Z"
+    }
+  },
+  "subscriptions": {
+    "ssf-hub-subscription-hub_123_abc": {
+      "topic_name": "ssf-hub-events",
+      "message_count": 5,
+      "created_at": "2023-12-01T12:00:00Z"
+    }
+  }
+}
 ```
 
 ### 3. Send a Test Event
@@ -224,7 +268,30 @@ curl http://localhost:8080/metrics | grep ssf_
 
 ## Common Issues & Solutions
 
-### 1. Pub/Sub Emulator Connection Failed
+### 1. Mock Mode Issues
+
+**Error:** `cannot find package "github.com/sgnl-ai/caep.dev/ssfreceiver/ssf-hub/internal/pubsub"`
+
+**Solution:**
+```bash
+# Make sure you're in the ssf-hub directory
+cd ssf-hub
+go mod tidy
+make run-mock
+```
+
+**No messages appearing in mock stats:**
+```bash
+# Check if events are being sent
+curl http://localhost:8080/debug/mock/stats | jq '.topics'
+
+# Clear messages and try again
+curl -X POST http://localhost:8080/debug/mock/clear
+# Send test event...
+curl http://localhost:8080/debug/mock/stats | jq '.topics'
+```
+
+### 2. Pub/Sub Emulator Connection Failed
 
 **Error:** `transport: Error while dialing dial tcp [::1]:8085: connect: connection refused`
 

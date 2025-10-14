@@ -62,6 +62,10 @@ run-dev: ## Run with development settings
 	@echo "Starting SSF hub in development mode..."
 	@LOG_LEVEL=debug GCP_PROJECT_ID=test-project PUBSUB_TOPIC_PREFIX=ssf-events-dev go run ./cmd/server
 
+run-mock: ## Run with in-memory mock (no GCP needed)
+	@echo "Starting SSF hub with in-memory mock..."
+	@LOG_LEVEL=debug go run ./cmd/server-mock
+
 # Docker
 docker-build: ## Build Docker image
 	@echo "Building Docker image..."
